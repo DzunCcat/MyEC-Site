@@ -1,0 +1,14 @@
+# .dockerignore を backend フォルダに作成
+**/target/
+**/build/
+**/.git/
+**/.gitignore
+**/.vscode/
+**/.idea/
+**/node_modules/
+**/.env
+**/*.class
+**/*.jar
+**/mvnw
+**/mvnw.cmd
+**/.mvn
