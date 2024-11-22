@@ -1,0 +1,81 @@
+// UserRepositoryTest.java
+package com.example.userservice.repository;
+
+import com.example.userservice.entity.User;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@DataJpaTest
+public class UserRepositoryTest {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    public void testSaveUser() {
+        // Given
+        User user = User.builder()
+                .username("Bob")
+                .email("bob@example.com")
+                .password("password123")
+                .build();
+
+        // When
+        User savedUser = userRepository.save(user);
+
+        // Then
+        assertNotNull(savedUser);
+        assertNotNull(savedUser.getId());
+        assertEquals("Bob", savedUser.getUsername());
+    }
+
+    @Test
+    public void testFindById_UserExists() {
+        // Given
+        User user = User.builder()
+                .username("Bob")
+                .email("bob@example.com")
+                .password("password123")
+                .build();
+        User savedUser = userRepository.save(user);
+
+        // When
+        Optional<User> foundUser = userRepository.findById(savedUser.getId());
+
+        // Then
+        assertTrue(foundUser.isPresent());
+        assertEquals("Bob", foundUser.get().getUsername());
+    }
+
+    @Test
+    public void testFindById_UserNotFound() {
+        // When
+        Optional<User> foundUser = userRepository.findById(999L);
+
+        // Then
+        assertFalse(foundUser.isPresent());
+    }
+
+    @Test
+    public void testDeleteUser() {
+        // Given
+        User user = User.builder()
+                .username("Bob")
+                .email("bob@example.com")
+                .password("password123")
+                .build();
+        User savedUser = userRepository.save(user);
+
+        // When
+        userRepository.deleteById(savedUser.getId());
+        Optional<User> foundUser = userRepository.findById(savedUser.getId());
+
+        // Then
+        assertFalse(foundUser.isPresent());
+    }
+}

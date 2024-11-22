@@ -1,0 +1,23 @@
+package com.example.userservice.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+public class SecurityConfig {
+
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable())  // Lambda DSLでCSRFを無効化
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/users/**").permitAll()  // ユーザーAPIは認証不要に設定
+                .anyRequest().authenticated()  // その他の全リクエストは認証が必要
+            )
+            .httpBasic(basic -> basic.disable());  // Lambda DSLで基本認証の設定を変更（必要に応じて有効化可能）
+
+        return http.build();
+    }
+}

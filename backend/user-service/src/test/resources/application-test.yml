@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://db:5432/ecsite_test
+    username: admin
+    password: password
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+  flyway:
+    enabled: false
+
+eureka:
+  client:
+    enabled: false

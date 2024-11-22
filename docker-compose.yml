@@ -124,22 +124,32 @@ services:
       - my-network
 
   db:
-    image: postgres:13
-    environment:
-      - POSTGRES_DB=ecsite
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=password
-    ports:
-      - "5432:5432"
-    volumes:
-      - db-data:/var/lib/postgresql/data
-    networks:
-      - my-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d ecsite"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      image: postgres:15.2
+      environment:
+        - POSTGRES_DB=ecsite
+        - POSTGRES_USER=admin
+        - POSTGRES_PASSWORD=password
+        # 以下を追加
+        - POSTGRES_HOST_AUTH_METHOD=trust
+      ports:
+        - "5432:5432"
+      volumes:
+        - db-data:/var/lib/postgresql/data
+      networks:
+        - my-network
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U admin -d ecsite"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+      # 以下を追加
+      deploy:
+        resources:
+          limits:
+            memory: 512M
+          reservations:
+            memory: 256M
+      restart: always
 
   pgadmin:
     image: dpage/pgadmin4

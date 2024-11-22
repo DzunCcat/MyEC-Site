@@ -8,6 +8,10 @@
 		<item value="order-service"/>
 	</list>
 	<list key="searchhistory">
+		<item value="actuator"/>
+		<item value="user"/>
+		<item value="users"/>
+		<item value="security"/>
 		<item value="&lt;java.version&gt;21&lt;/java.version&gt;&#x0A;"/>
 		<item value="user-service"/>
 	</list>
