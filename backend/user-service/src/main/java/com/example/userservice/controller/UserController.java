@@ -1,11 +1,9 @@
 package com.example.userservice.controller;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 import jakarta.validation.Valid;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,87 +15,82 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.userservice.dto.CreateUserDto;
-import com.example.userservice.dto.UserDto;
-import com.example.userservice.entity.User;
-import com.example.userservice.exception.UserNotFoundException;
+import com.example.userservice.dto.request.CreateUserRequest;
+import com.example.userservice.dto.response.UserResponse;
 import com.example.userservice.service.UserService;
 
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
+    private static final Logger log = LoggerFactory.getLogger(UserController.class);
+    private final UserService userService;
 
-    @Autowired
-    private UserService userService;
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
-    // ユーザーの新規作成
     @PostMapping
-    public ResponseEntity<UserDto> createUser(@Valid @RequestBody CreateUserDto createUserDto) {
-        User user = User.builder()
-                .username(createUserDto.getUsername())
-                .email(createUserDto.getEmail())
-                .password(createUserDto.getPassword())
-                .build();
-        User createdUser = userService.createUser(user);
+    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
+        log.info("Received request to create user with username: {}", request.getUsername());
+        
+        try {
+            UserResponse createdUser = userService.createUser(request);
+            log.info("Successfully created user with ID: {}", createdUser.getId());
+            
+            return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(createdUser);
 
-        UserDto createdUserDto = UserDto.builder()
-                .id(createdUser.getId())
-                .username(createdUser.getUsername())
-                .email(createdUser.getEmail())
-                .build();
-
-        return new ResponseEntity<>(createdUserDto, HttpStatus.CREATED);
+        } catch (Exception e) {
+            log.error("Error occurred while creating user", e);
+            throw e; 
+        }
     }
 
-    // ユーザーの更新
-    @PutMapping("/{id}")
-    public ResponseEntity<UserDto> updateUser(@PathVariable Long id, @Valid @RequestBody CreateUserDto createUserDto) {
-        User user = User.builder()
-                .id(id)
-                .username(createUserDto.getUsername())
-                .email(createUserDto.getEmail())
-                .password(createUserDto.getPassword())
-                .build();
-        User updatedUser = userService.updateUser(id, user);
-
-        UserDto updatedUserDto = UserDto.builder()
-                .id(updatedUser.getId())
-                .username(updatedUser.getUsername())
-                .email(updatedUser.getEmail())
-                .build();
-
-        return new ResponseEntity<>(updatedUserDto, HttpStatus.OK);
-    }
-
-    // 特定のユーザーの取得
     @GetMapping("/{id}")
-    public ResponseEntity<UserDto> getUserById(@PathVariable Long id) {
-        return userService.getUserById(id)
-                .map(user -> UserDto.builder()
-                        .id(user.getId())
-                        .username(user.getUsername())
-                        .email(user.getEmail())
-                        .build())
-                .map(userDto -> new ResponseEntity<>(userDto, HttpStatus.OK))
-                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
+    public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
+        log.info("Received request to get user with ID: {}", id);
+        
+        try {
+            UserResponse user = userService.getUserById(id);
+            log.info("Successfully retrieved user with ID: {}", id);
+            
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
+            log.error("Error occurred while fetching user with ID: {}", id, e);
+            throw e;
+        }
     }
 
-    // 全ユーザーの取得
-    @GetMapping
-    public ResponseEntity<List<UserDto>> getAllUsers() {
-        List<User> users = userService.getAllUsers();
-        List<UserDto> userDtos = users.stream().map(user -> UserDto.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .build()).collect(Collectors.toList());
-        return new ResponseEntity<>(userDtos, HttpStatus.OK);
+    @PutMapping("/{id}")
+    public ResponseEntity<UserResponse> updateUser(
+            @PathVariable Long id, 
+            @Valid @RequestBody CreateUserRequest request) {
+        log.info("Received request to update user with ID: {}", id);
+        
+        try {
+            UserResponse updatedUser = userService.updateUser(id, request);
+            log.info("Successfully updated user with ID: {}", id);
+            
+            return ResponseEntity.ok(updatedUser);
+        } catch (Exception e) {
+            log.error("Error occurred while updating user with ID: {}", id, e);
+            throw e;
+        }
     }
 
-    // ユーザーの削除
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        userService.deleteUser(id);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        log.info("Received request to delete user with ID: {}", id);
+        
+        try {
+            userService.deleteUser(id);
+            log.info("Successfully deleted user with ID: {}", id);
+            
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Error occurred while deleting user with ID: {}", id, e);
+            throw e;
+        }
     }
 }

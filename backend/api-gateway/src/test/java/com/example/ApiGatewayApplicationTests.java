@@ -3,7 +3,7 @@ package com.example;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+@SpringBootTest(properties = {"spring.cloud.discovery.enabled=false"})
 class ApiGatewayApplicationTests {
 
 	@Test

@@ -1,0 +1,115 @@
+package com.example.userservice.integration;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase.Replace;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+
+import com.example.userservice.dto.request.CreateUserRequest;
+import com.example.userservice.entity.User;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+@SpringBootTest(classes = com.example.userservice.UserServiceApplication.class, excludeAutoConfiguration = FlywayAutoConfiguration.class) // Flywayの自動構成を除外
+@AutoConfigureMockMvc
+@AutoConfigureTestDatabase(replace = Replace.ANY) // H2データベースを強制的に使用
+@ActiveProfiles("test")
+class UserIntegrationTest {
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired 
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    private User existingUser;
+    private CreateUserRequest updateRequest;
+
+    @BeforeEach
+    void setUp() {
+        // テストデータのクリーンアップ
+        userRepository.deleteAll();
+
+        // テストユーザーの作成
+        existingUser = User.builder()
+                .username("existingUser")
+                .email("existing@test.com")
+                .password(passwordEncoder.encode("password123"))
+                .build();
+        existingUser = userRepository.save(existingUser);
+
+        // 更新用リクエストの準備
+        updateRequest = CreateUserRequest.builder()
+                .username("updatedUsername")
+                .email("updated@test.com")
+                .password("newpassword123")
+                .build();
+    }
+
+    @Test
+    void createUserIntegrationTest() throws Exception {
+        CreateUserRequest newUser = CreateUserRequest.builder()
+                .username("newuser")
+                .email("newuser@test.com")
+                .password("password123")
+                .build();
+
+        mockMvc.perform(post("/api/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(newUser)))
+                .andExpect(status().isCreated())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.username").value(newUser.getUsername()))
+                .andExpect(jsonPath("$.email").value(newUser.getEmail()));
+    }
+
+    @Test
+    @WithMockUser
+    void getUserByIdIntegrationTest() throws Exception {
+        mockMvc.perform(get("/api/users/{id}", existingUser.getId())
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").value(existingUser.getId()))
+                .andExpect(jsonPath("$.username").value(existingUser.getUsername()))
+                .andExpect(jsonPath("$.email").value(existingUser.getEmail()));
+    }
+
+    @Test
+    @WithMockUser
+    void updateUserIntegrationTest() throws Exception {
+        mockMvc.perform(put("/api/users/{id}", existingUser.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.username").value(updateRequest.getUsername()))
+                .andExpect(jsonPath("$.email").value(updateRequest.getEmail()));
+    }
+
+    @Test
+    @WithMockUser
+    void deleteUserIntegrationTest() throws Exception {
+        mockMvc.perform(delete("/api/users/{id}", existingUser.getId()))
+                .andExpect(status().isNoContent());
+
+        assertThat(userRepository.findById(existingUser.getId())).isEmpty();
+    }
+}

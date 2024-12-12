@@ -8,6 +8,7 @@
 		<item value="order-service"/>
 	</list>
 	<list key="searchhistory">
+		<item value="web"/>
 		<item value="actuator"/>
 		<item value="user"/>
 		<item value="users"/>

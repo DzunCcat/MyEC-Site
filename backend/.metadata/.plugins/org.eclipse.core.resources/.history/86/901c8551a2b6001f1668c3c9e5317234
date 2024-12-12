@@ -1,0 +1,252 @@
+//package com.example.userservice.controller;
+//
+//import static org.mockito.ArgumentMatchers.*;
+//import static org.mockito.Mockito.*;
+//import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+//import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+//
+//import org.junit.jupiter.api.BeforeEach;
+//import org.junit.jupiter.api.Test;
+//import org.springframework.beans.factory.annotation.Autowired;
+//import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+//import org.springframework.boot.test.mock.mockito.MockBean;
+//import org.springframework.http.MediaType;
+//import org.springframework.test.web.servlet.MockMvc;
+//
+//import com.example.userservice.dto.request.CreateUserRequest;
+//import com.example.userservice.dto.response.UserResponse;
+//import com.example.userservice.exception.business.UserNotFoundException;
+//import com.example.userservice.service.UserService;
+//import com.fasterxml.jackson.databind.ObjectMapper;
+//
+//@WebMvcTest(UserController.class)
+//public class UserControllerTest {
+//    @Autowired
+//    private MockMvc mockMvc;
+//
+//    @MockBean
+//    private UserService userService;
+//
+//    @Autowired
+//    private ObjectMapper objectMapper;
+//
+//    private CreateUserRequest createUserRequest;
+//    private UserResponse userResponse;
+//
+//    @BeforeEach
+//    void setUp() {
+//        // テストデータのセットアップ
+//        createUserRequest = CreateUserRequest.builder()
+//            .username("testUser")
+//            .email("test@example.com")
+//            .password("password123")
+//            .build();
+//
+//        userResponse = UserResponse.builder()
+//            .id(1L)
+//            .username("testUser")
+//            .email("test@example.com")
+//            .build();
+//    }
+//
+//    @Test
+//    void createUser_Success() throws Exception {
+//        // UserServiceの振る舞いを設定
+//        when(userService.createUser(any(CreateUserRequest.class)))
+//            .thenReturn(userResponse);
+////
+//        // APIリクエストの実行と検証
+//        mockMvc.perform(post("/api/users")
+//                .contentType(MediaType.APPLICATION_JSON)
+//                .content(objectMapper.writeValueAsString(createUserRequest)))
+//                .andExpect(status().isCreated())
+//                .andExpect(jsonPath("$.id").value(1L))
+//                .andExpect(jsonPath("$.username").value("testUser"))
+//                .andExpect(jsonPath("$.email").value("test@example.com"));
+//
+//        verify(userService, times(1)).createUser(any(CreateUserRequest.class));
+//    }
+//
+//    @Test
+//    void getUserById_Success() throws Exception {
+//        when(userService.getUserById(1L)).thenReturn(userResponse);
+//
+//        mockMvc.perform(get("/api/users/1"))
+//                .andExpect(status().isOk())
+//                .andExpect(jsonPath("$.id").value(1L))
+//                .andExpect(jsonPath("$.username").value("testUser"))
+//                .andExpect(jsonPath("$.email").value("test@example.com"));
+//    }
+//
+//    @Test
+//    void getUserById_NotFound() throws Exception {
+//        when(userService.getUserById(1L))
+//            .thenThrow(new UserNotFoundException("User not found with id: 1"));
+//
+//        mockMvc.perform(get("/api/users/1"))
+//                .andExpect(status().isNotFound());
+//    }
+//
+//    @Test
+//    void updateUser_Success() throws Exception {
+//        when(userService.updateUser(eq(1L), any(CreateUserRequest.class)))
+//            .thenReturn(userResponse);
+//
+//        mockMvc.perform(put("/api/users/1")
+//                .contentType(MediaType.APPLICATION_JSON)
+//                .content(objectMapper.writeValueAsString(createUserRequest)))
+//                .andExpect(status().isOk())
+//                .andExpect(jsonPath("$.id").value(1L))
+//                .andExpect(jsonPath("$.username").value("testUser"))
+//                .andExpect(jsonPath("$.email").value("test@example.com"));
+//    }
+//
+//    @Test
+//    void deleteUser_Success() throws Exception {
+//        doNothing().when(userService).deleteUser(1L);
+//
+//        mockMvc.perform(delete("/api/users/1"))
+//                .andExpect(status().isNoContent());
+//
+//        verify(userService, times(1)).deleteUser(1L);
+//    }
+//
+//    @Test
+//    void createUser_ValidationFailed() throws Exception {
+//        CreateUserRequest invalidRequest = CreateUserRequest.builder()
+//            .username("")  // 空のユーザー名
+//            .email("invalid-email")  // 無効なメールアドレス
+//            .password("123")  // 短すぎるパスワード
+//            .build();
+//
+//        mockMvc.perform(post("/api/users")
+//                .contentType(MediaType.APPLICATION_JSON)
+//                .content(objectMapper.writeValueAsString(invalidRequest)))
+//                .andExpect(status().isBadRequest());
+//    }
+//}
+
+package com.example.userservice.controller;
+
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.web.servlet.MockMvc;
+
+import com.example.userservice.config.TestSecurityConfig;
+import com.example.userservice.dto.request.CreateUserRequest;
+import com.example.userservice.dto.response.UserResponse;
+import com.example.userservice.exception.business.UserNotFoundException;
+import com.example.userservice.service.UserService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+@WebMvcTest(UserController.class)
+@Import(TestSecurityConfig.class)
+public class UserControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private UserService userService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    private CreateUserRequest createUserRequest;
+    private UserResponse userResponse;
+
+    @BeforeEach
+    void setUp() {
+        createUserRequest = CreateUserRequest.builder()
+            .username("testUser")
+            .email("test@example.com")
+            .password("password123")
+            .build();
+
+        userResponse = UserResponse.builder()
+            .id(1L)
+            .username("testUser")
+            .email("test@example.com")
+            .build();
+    }
+
+    @Test
+    void createUser_Success() throws Exception {
+        when(userService.createUser(any(CreateUserRequest.class)))
+            .thenReturn(userResponse);
+
+        mockMvc.perform(post("/api/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(createUserRequest)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(1L));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = "USER")
+    void getUserById_Success() throws Exception {
+        when(userService.getUserById(1L)).thenReturn(userResponse);
+
+        mockMvc.perform(get("/api/users/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1L));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = "ADMIN")
+    void deleteUser_Success() throws Exception {
+        doNothing().when(userService).deleteUser(1L);
+
+        mockMvc.perform(delete("/api/users/1"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = "USER")
+    void updateUser_Success() throws Exception {
+        when(userService.updateUser(eq(1L), any(CreateUserRequest.class)))
+            .thenReturn(userResponse);
+
+        mockMvc.perform(put("/api/users/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(createUserRequest))
+                .with(user("testuser").roles("USER")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void createUser_ValidationFailed() throws Exception {
+        CreateUserRequest invalidRequest = CreateUserRequest.builder()
+            .username("")
+            .email("invalid-email")
+            .password("123")
+            .build();
+
+        mockMvc.perform(post("/api/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = "USER")
+    void getUserById_NotFound() throws Exception {
+        when(userService.getUserById(1L))
+            .thenThrow(new UserNotFoundException("User not found with id: 1"));
+
+        mockMvc.perform(get("/api/users/1"))
+                .andExpect(status().isNotFound());
+    }
+}

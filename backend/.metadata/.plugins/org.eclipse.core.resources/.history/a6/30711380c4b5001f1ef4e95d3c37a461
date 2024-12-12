@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: user-service  # サービス名の設定
+
+  # データベース接続設定
+  datasource:
+    url: jdbc:postgresql://db:5432/ecsite  # Docker Composeで設定したDBコンテナへの接続
+    username: admin
+    password: password
+    driver-class-name: org.postgresql.Driver
+
+  # JPA/Hibernateの設定
+  jpa:
+    hibernate:
+      ddl-auto: update  # 本番環境ではvalidateにすることを推奨
+    show-sql: true      # 開発時のみtrueにすることを推奨
+    properties:
+      hibernate:
+        format_sql: true
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+  # Eurekaクライアントの設定
+  eureka:
+    client:
+      service-url:
+        defaultZone: http://eureka-server:8761/eureka
+      register-with-eureka: true
+      fetch-registry: true
+    instance:
+      prefer-ip-address: true
+
+# サーバーポートの設定
+server:
+  port: 8081  # User Serviceのポート
+
+# アクチュエーターの設定（監視・管理用）
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
