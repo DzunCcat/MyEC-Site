@@ -230,18 +230,18 @@ import static org.assertj.core.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase.Replace;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
 import org.springframework.test.context.ActiveProfiles;
+
 import com.example.userservice.entity.User;
-import com.example.userservice.repository.UserRepository;
 
 @DataJpaTest(excludeAutoConfiguration = FlywayAutoConfiguration.class) // Flywayの自動構成を除外
 @AutoConfigureTestDatabase(replace = Replace.ANY) // H2データベースを強制的に使用
 @ActiveProfiles("test")
-class UserRepositoryTest {
+public class UserRepositoryTest {
 
     @Autowired
     private UserRepository userRepository;

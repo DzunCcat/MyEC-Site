@@ -10,14 +10,11 @@ import lombok.Data;
 @Data
 @Builder
 public class ErrorResponse {
-    private final LocalDateTime timestamp;
+    private LocalDateTime timestamp;
     private int status;
     private String error;
     private String message;
     private String path;
     private List<String> details;
 
-    public static class ErrorResponseBuilder {
-        private LocalDateTime timestamp = LocalDateTime.now();
-    }
 }

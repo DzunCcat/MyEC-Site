@@ -295,7 +295,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @AutoConfigureMockMvc
 @AutoConfigureTestDatabase(replace = Replace.ANY) // H2データベースを強制的に使用
 @ActiveProfiles("test")
-class UserIntegrationTest {
+public class UserIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

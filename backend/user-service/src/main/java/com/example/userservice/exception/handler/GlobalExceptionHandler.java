@@ -1,6 +1,6 @@
-// exception/handler/GlobalExceptionHandler.java
 package com.example.userservice.exception.handler;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,14 +25,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleBaseException(BaseException ex, WebRequest request) {
         log.error("Handling base exception: {}", ex.getMessage());
 
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .status(ex.getStatus().value())
-                .error(ex.getStatus().getReasonPhrase())
-                .message(ex.getMessage())
-                .path(request.getDescription(false).replace("uri=", ""))
-                .build();
+        ResponseEntity<ErrorResponse> errorResponse = buildErrorResponse(ex.getStatus(),  ex.getMessage(), request, null);
         
-        return ResponseEntity.status(ex.getStatus()).body(errorResponse);
+        return errorResponse;
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -45,30 +40,36 @@ public class GlobalExceptionHandler {
                 .map(FieldError::getDefaultMessage)
                 .collect(Collectors.toList());
 
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Validation Error")
-                .message("入力値の検証に失敗しました")
-                .path(request.getDescription(false).replace("uri=", ""))
-                .details(details)
-                .build();
-
-        return ResponseEntity.badRequest().body(errorResponse);
+        ResponseEntity<ErrorResponse> errorResponse = buildErrorResponse(HttpStatus.BAD_REQUEST,  "入力値の検証に失敗しました", request, details);
+        
+        return errorResponse;
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpectedException(Exception ex, WebRequest request) {
         log.error("Handling unexpected exception", ex);
+        
+        ResponseEntity<ErrorResponse> errorResponse = buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR,  "予期せぬエラーが発生しました", request, null);
 
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .error("Internal Server Error")
-                .message("予期せぬエラーが発生しました")
-                .path(request.getDescription(false).replace("uri=", ""))
-                .build();
-
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(errorResponse);
+        return errorResponse;
     }
+    
+    
+    private ResponseEntity<ErrorResponse> buildErrorResponse(HttpStatus status, String message, WebRequest request, List<String> details) {
+        ErrorResponse.ErrorResponseBuilder builder = ErrorResponse.builder()
+            .timestamp(LocalDateTime.now())
+            .status(status.value())
+            .error(status.getReasonPhrase())
+            .message(message)
+            .path(request.getDescription(false).replace("uri=", ""));
+        
+        if (details != null && !details.isEmpty()) {
+            builder.details(details);
+        }
+        
+        return ResponseEntity.status(status).body(builder.build());
+    }
+
+    
+    
 }
