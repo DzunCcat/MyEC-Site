@@ -20,4 +20,5 @@
     <fullyQualifiedTypeName name="com.example.userservice.exception.UserNotFoundException"/>
     <fullyQualifiedTypeName name="lombok.Builder"/>
     <fullyQualifiedTypeName name="java.time.LocalDateTime"/>
+    <fullyQualifiedTypeName name="com.example.userservice.exception.response.ErrorResponse"/>
 </qualifiedTypeNameHistroy>

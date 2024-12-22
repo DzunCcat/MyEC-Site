@@ -1,3 +1,29 @@
+# # ビルドステージ
+# FROM maven:3.9.5-eclipse-temurin-17-alpine AS build
+# WORKDIR /app
+
+# COPY pom.xml .
+# RUN mvn dependency:go-offline
+
+# COPY src ./src
+# RUN mvn clean package -DskipTests
+
+# # 実行ステージ
+# FROM maven:3.9.5-eclipse-temurin-17-alpine
+# WORKDIR /app
+
+# RUN apk add --no-cache curl 
+# RUN apk add --no-cache bash
+
+# COPY --from=build /app/target/user-service-0.0.1-SNAPSHOT.jar app.jar
+# COPY pom.xml .  
+# COPY src ./src 
+
+# COPY wait-for-it.sh /wait-for-it.sh
+# RUN chmod +x /wait-for-it.sha
+
+# ENTRYPOINT ["/wait-for-it.sh", "eureka-server:8761", "--", "bash", "-c", "java -Xmx512m -Xms256m -jar app.jar"]
+
 # ビルドステージ
 FROM maven:3.9.5-eclipse-temurin-17-alpine AS build
 WORKDIR /app
@@ -16,8 +42,9 @@ RUN apk add --no-cache curl
 RUN apk add --no-cache bash
 
 COPY --from=build /app/target/user-service-0.0.1-SNAPSHOT.jar app.jar
-COPY pom.xml .  
-COPY src ./src 
+# 以下の行を削除またはコメントアウト
+# COPY pom.xml .  
+# COPY src ./src 
 
 COPY wait-for-it.sh /wait-for-it.sh
 RUN chmod +x /wait-for-it.sh

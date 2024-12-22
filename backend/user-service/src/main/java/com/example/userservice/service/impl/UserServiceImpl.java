@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 
@@ -45,7 +46,7 @@ public class UserServiceImpl implements UserService {
             return mapToResponse(savedUser);
         } catch (Exception e) {
             log.error("Failed to create user", e);
-            throw new ValidationException("ユーザーの作成に失敗しました");
+            throw new ValidationException("User creation failed");
         }
     }
 
@@ -74,7 +75,7 @@ public class UserServiceImpl implements UserService {
             return mapToResponse(updatedUser);
         } catch (Exception e) {
             log.error("Failed to update user with ID: {}", id, e);
-            throw new ValidationException("ユーザーの更新に失敗しました");
+            throw new ValidationException("User update failed.");
         }
     }
 
@@ -115,16 +116,25 @@ public class UserServiceImpl implements UserService {
         try {
             userRepository.deleteById(id);
             log.info("Successfully deleted user with ID: {}", id);
+        } catch (DataIntegrityViolationException e) {
+            log.error("Foreign key constraint violation when deleting user with ID: {}", id, e);
+            throw e;
         } catch (Exception e) {
-            log.error("Failed to delete user with ID: {}", id, e);
-            throw new ValidationException("ユーザーの削除に失敗しました");
+            log.error("Unexpected error while deleting user with ID: {}", id, e);
+            throw new ValidationException("Failed to delete user");
         }
     }
 
     private void validateNewUser(CreateUserRequest request) {
+        if (request.getPassword() == null || request.getPassword().length() < 8) {
+            log.warn("Attempted to create user with password shorter than 8 characters");
+            throw new IllegalArgumentException("Password must be at least 8 characters long");
+        }
+    	
+    	
         if (userRepository.existsByUsername(request.getUsername())) {
             log.warn("Attempted to create user with existing username: {}", request.getUsername());
-            throw new UserAlreadyExistsException("Username " + request.getUsername() + " is already taken");
+            throw new UserAlreadyExistsException("Username " + request.getUsername() + " is already registered");
         }
 
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -137,7 +147,7 @@ public class UserServiceImpl implements UserService {
         if (!request.getUsername().equals(existingUser.getUsername()) &&
             userRepository.existsByUsername(request.getUsername())) {
             log.warn("Attempted to update user with existing username: {}", request.getUsername());
-            throw new UserAlreadyExistsException("Username " + request.getUsername() + " is already taken");
+            throw new UserAlreadyExistsException("Username " + request.getUsername() + " is already registered");
         }
 
         if (!request.getEmail().equals(existingUser.getEmail()) &&

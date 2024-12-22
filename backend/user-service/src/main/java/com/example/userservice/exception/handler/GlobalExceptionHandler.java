@@ -7,7 +7,9 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType; // new code
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -54,6 +56,12 @@ public class GlobalExceptionHandler {
         return errorResponse;
     }
     
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAuthorizationDeniedException(AuthorizationDeniedException ex, WebRequest request) {
+        return buildErrorResponse(HttpStatus.FORBIDDEN, "Access Denied", request, null);
+    }
+
+    
     
     private ResponseEntity<ErrorResponse> buildErrorResponse(HttpStatus status, String message, WebRequest request, List<String> details) {
         ErrorResponse.ErrorResponseBuilder builder = ErrorResponse.builder()
@@ -62,14 +70,13 @@ public class GlobalExceptionHandler {
             .error(status.getReasonPhrase())
             .message(message)
             .path(request.getDescription(false).replace("uri=", ""));
-        
+
         if (details != null && !details.isEmpty()) {
             builder.details(details);
         }
-        
-        return ResponseEntity.status(status).body(builder.build());
-    }
 
-    
-    
+        return ResponseEntity.status(status)
+                .contentType(MediaType.APPLICATION_JSON) // new code: JSONレスポンス設定
+                .body(builder.build());
+    }
 }

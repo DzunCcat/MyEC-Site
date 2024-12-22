@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <section name="Workbench">
 	<item key="hasShownOverlayPopupBefore" value="true"/>
-	<item key="replaceBarOpen" value="true"/>
+	<item key="replaceBarOpen" value="false"/>
 	<list key="replacehistory">
 		<item value="&lt;java.version&gt;17&lt;/java.version&gt;&#x0A;"/>
 		<item value="product-service"/>
 		<item value="order-service"/>
 	</list>
 	<list key="searchhistory">
+		<item value="taken"/>
+		<item value="already"/>
+		<item value="already registered"/>
+		<item value="delete"/>
 		<item value="web"/>
 		<item value="actuator"/>
 		<item value="user"/>

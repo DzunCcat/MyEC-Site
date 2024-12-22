@@ -50,6 +50,10 @@ services:
         condition: service_healthy
     networks:
       - my-network
+    volumes:
+      - ./backend/user-service/src:/app/src
+      - ./backend/user-service/pom.xml:/app/pom.xml
+      - ./backend/user-service/target:/app/target
 
   product-service:
     build:
