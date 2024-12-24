@@ -1,23 +1,26 @@
 package com.example.userservice.controller;
 
+import java.util.UUID;
+
 import jakarta.validation.Valid;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize; // new code
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping; // new code
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.userservice.dto.request.CreateUserRequest;
 import com.example.userservice.dto.response.UserResponse;
+import com.example.userservice.exception.validation.ValidationException;
 import com.example.userservice.service.UserService;
 
 @RestController
@@ -49,11 +52,12 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
+    public ResponseEntity<UserResponse> getUserById(@PathVariable String id) {
         log.info("Received request to get user with ID: {}", id);
         
         try {
-            UserResponse user = userService.getUserById(id);
+            UUID uuid = parseUUID(id);
+            UserResponse user = userService.getUserById(uuid);
             log.info("Successfully retrieved user with ID: {}", id);
             
             return ResponseEntity.ok(user);
@@ -66,12 +70,13 @@ public class UserController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @userSecurity.isOwner(authentication, #id)") 
     public ResponseEntity<UserResponse> updateUser(
-            @PathVariable Long id, 
+            @PathVariable String id, 
             @Valid @RequestBody CreateUserRequest request) {
         log.info("Received request to update user with ID: {}", id);
         
         try {
-            UserResponse updatedUser = userService.updateUser(id, request);
+            UUID uuid = parseUUID(id);
+            UserResponse updatedUser = userService.updateUser(uuid, request);
             log.info("Successfully updated user with ID: {}", id);
             
             return ResponseEntity.ok(updatedUser);
@@ -83,17 +88,34 @@ public class UserController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @userSecurity.isOwner(authentication, #id)") 
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable String id) {
         log.info("Received request to delete user with ID: {}", id);
         
         try {
-            userService.deleteUser(id);
+            UUID uuid = parseUUID(id);
+            userService.deleteUser(uuid);
             log.info("Successfully deleted user with ID: {}", id);
             
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
             log.error("Error occurred while deleting user with ID: {}", id, e);
             throw e;
+        }
+    }
+
+    /**
+     * 文字列をUUIDに変換する。
+     * 無効なUUID形式の場合は適切な例外をスローする。
+     * 
+     * @param id UUID形式の文字列
+     * @return 変換されたUUID
+     * @throws ValidationException UUID形式が無効な場合
+     */
+    private UUID parseUUID(String id) {
+        try {
+            return UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("Invalid UUID format: " + id);
         }
     }
 }

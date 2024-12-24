@@ -9,31 +9,32 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Import; // new code
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles; // new code
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.example.userservice.config.SecurityConfig; // new code
+import com.example.userservice.config.SecurityConfig;
 import com.example.userservice.dto.request.CreateUserRequest;
 import com.example.userservice.dto.response.UserResponse;
 import com.example.userservice.exception.business.UserAlreadyExistsException;
 import com.example.userservice.exception.business.UserNotFoundException;
-import com.example.userservice.exception.handler.GlobalExceptionHandler; // new code
-import com.example.userservice.security.UserSecurity; // new code
+import com.example.userservice.exception.handler.GlobalExceptionHandler;
+import com.example.userservice.security.UserSecurity;
 import com.example.userservice.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @WebMvcTest(UserController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class}) // new code: SecurityConfigとGlobalExceptionHandlerをインポート
-@ActiveProfiles("test") // new code: テストプロファイルを有効化
+@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@ActiveProfiles("test")
 public class UserControllerTest {
 
     @Autowired
@@ -50,9 +51,12 @@ public class UserControllerTest {
 
     private CreateUserRequest createUserRequest;
     private UserResponse userResponse;
+    private UUID testUuid;
 
     @BeforeEach
     void setUp() {
+        testUuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+
         createUserRequest = CreateUserRequest.builder()
             .username("testUser")
             .email("test@example.com")
@@ -60,7 +64,7 @@ public class UserControllerTest {
             .build();
 
         userResponse = UserResponse.builder()
-            .id(1L)
+            .id(testUuid)
             .username("testUser")
             .email("test@example.com")
             .createdAt(LocalDateTime.now())
@@ -78,7 +82,7 @@ public class UserControllerTest {
                 .content(objectMapper.writeValueAsString(createUserRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.id").value(testUuid.toString()))
                 .andExpect(jsonPath("$.username").value("testUser"))
                 .andExpect(jsonPath("$.email").value("test@example.com"))
                 .andExpect(jsonPath("$.createdAt").exists())
@@ -88,12 +92,12 @@ public class UserControllerTest {
     @Test
     @WithMockUser(username = "testuser", roles = "USER")
     void getUserById_Success() throws Exception {
-        when(userService.getUserById(1L)).thenReturn(userResponse);
+        when(userService.getUserById(any(UUID.class))).thenReturn(userResponse);
 
-        mockMvc.perform(get("/api/users/1"))
+        mockMvc.perform(get("/api/users/" + testUuid))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.id").value(testUuid.toString()))
                 .andExpect(jsonPath("$.username").value("testUser"))
                 .andExpect(jsonPath("$.email").value("test@example.com"))
                 .andExpect(jsonPath("$.createdAt").exists())
@@ -103,28 +107,27 @@ public class UserControllerTest {
     @Test
     @WithMockUser(username = "admin", roles = "ADMIN")
     void deleteUser_Success() throws Exception {
-        doNothing().when(userService).deleteUser(1L);
+        doNothing().when(userService).deleteUser(any(UUID.class));
 
-        mockMvc.perform(delete("/api/users/1"))
+        mockMvc.perform(delete("/api/users/" + testUuid))
                 .andExpect(status().isNoContent());
     }
 
     @Test
     @WithMockUser(username = "testuser", roles = "USER")
     void updateUser_Success() throws Exception {
-        when(userService.updateUser(eq(1L), any(CreateUserRequest.class)))
+        when(userService.updateUser(any(UUID.class), any(CreateUserRequest.class)))
             .thenReturn(userResponse);
 
-        // new code: 所有者判定true
-        when(userSecurity.isOwner(any(), eq(1L))).thenReturn(true);
+        when(userSecurity.isOwner(any(), eq(testUuid.toString()))).thenReturn(true);
 
-        mockMvc.perform(put("/api/users/1")
+        mockMvc.perform(put("/api/users/" + testUuid)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(createUserRequest))
                 .with(user("testuser").roles("USER")))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.id").value(testUuid.toString()))
                 .andExpect(jsonPath("$.username").value("testUser"))
                 .andExpect(jsonPath("$.email").value("test@example.com"))
                 .andExpect(jsonPath("$.createdAt").exists())
@@ -160,16 +163,29 @@ public class UserControllerTest {
     @Test
     @WithMockUser(username = "testuser", roles = "USER")
     void getUserById_NotFound() throws Exception {
-        when(userService.getUserById(1L))
-            .thenThrow(new UserNotFoundException("User not found with id: 1"));
+        when(userService.getUserById(any(UUID.class)))
+            .thenThrow(new UserNotFoundException("User not found with id: " + testUuid));
 
-        mockMvc.perform(get("/api/users/1"))
+        mockMvc.perform(get("/api/users/" + testUuid))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.error").value("Not Found"))
-                .andExpect(jsonPath("$.message").value("User not found with id: 1"))
-                .andExpect(jsonPath("$.path").value("/api/users/1"))
+                .andExpect(jsonPath("$.message").value("User not found with id: " + testUuid))
+                .andExpect(jsonPath("$.path").value("/api/users/" + testUuid))
+                .andExpect(jsonPath("$.details").doesNotExist());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = "USER")
+    void getUserById_InvalidUUID() throws Exception {
+        mockMvc.perform(get("/api/users/invalid-uuid"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("Invalid UUID format: invalid-uuid"))
+                .andExpect(jsonPath("$.path").value("/api/users/invalid-uuid"))
                 .andExpect(jsonPath("$.details").doesNotExist());
     }
 
@@ -199,67 +215,63 @@ public class UserControllerTest {
     @Test
     @WithMockUser(username = "testuser", roles = "USER")
     void updateUser_NotFound() throws Exception {
-        when(userService.updateUser(eq(1L), any(CreateUserRequest.class)))
-            .thenThrow(new UserNotFoundException("User not found with id: 1"));
+        when(userService.updateUser(any(UUID.class), any(CreateUserRequest.class)))
+            .thenThrow(new UserNotFoundException("User not found with id: " + testUuid));
 
-        // new code: 所有者判定false
-        when(userSecurity.isOwner(any(), eq(1L))).thenReturn(true);
+        when(userSecurity.isOwner(any(), eq(testUuid.toString()))).thenReturn(true);
 
-
-        mockMvc.perform(put("/api/users/1")
+        mockMvc.perform(put("/api/users/" + testUuid)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(createUserRequest)))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.error").value("Not Found"))
-                .andExpect(jsonPath("$.message").value("User not found with id: 1"))
-                .andExpect(jsonPath("$.path").value("/api/users/1"))
+                .andExpect(jsonPath("$.message").value("User not found with id: " + testUuid))
+                .andExpect(jsonPath("$.path").value("/api/users/" + testUuid))
                 .andExpect(jsonPath("$.details").doesNotExist());
     }
 
     @Test
     @WithMockUser(username = "testuser", roles = "USER")
     void getUserById_InternalServerError() throws Exception {
-        when(userService.getUserById(1L))
+        when(userService.getUserById(any(UUID.class)))
             .thenThrow(new RuntimeException("Unexpected error"));
 
-        mockMvc.perform(get("/api/users/1"))
+        mockMvc.perform(get("/api/users/" + testUuid))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value(500))
                 .andExpect(jsonPath("$.error").value("Internal Server Error"))
                 .andExpect(jsonPath("$.message").value("予期せぬエラーが発生しました"))
-                .andExpect(jsonPath("$.path").value("/api/users/1"))
+                .andExpect(jsonPath("$.path").value("/api/users/" + testUuid))
                 .andExpect(jsonPath("$.details").doesNotExist());
     }
 
     @Test
     void getUserById_Unauthorized() throws Exception {
-        // 認証情報なしでアクセス -> 401
-        mockMvc.perform(get("/api/users/1"))
+        mockMvc.perform(get("/api/users/" + testUuid))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.error").value("Unauthorized"))
                 .andExpect(jsonPath("$.message").value("Full authentication is required to access this resource"))
-                .andExpect(jsonPath("$.path").value("/api/users/1"))
+                .andExpect(jsonPath("$.path").value("/api/users/" + testUuid))
                 .andExpect(jsonPath("$.details").doesNotExist());
     }
 
     @Test
     @WithMockUser(username = "testuser", roles = "USER")
     void deleteUser_Forbidden() throws Exception {
-        // ADMINまたは所有者でない場合 -> 403
-        when(userSecurity.isOwner(any(), eq(1L))).thenReturn(false);
+        when(userSecurity.isOwner(any(), eq(testUuid.toString()))).thenReturn(false);
 
-        mockMvc.perform(delete("/api/users/1"))
+        mockMvc.perform(delete("/api/users/" + testUuid))
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value(403))
                 .andExpect(jsonPath("$.error").value("Forbidden"))
                 .andExpect(jsonPath("$.message").value("Access Denied"))
-                .andExpect(jsonPath("$.path").value("/api/users/1"))
+                .andExpect(jsonPath("$.path").value("/api/users/" + testUuid))
                 .andExpect(jsonPath("$.details").doesNotExist());
     }
 }

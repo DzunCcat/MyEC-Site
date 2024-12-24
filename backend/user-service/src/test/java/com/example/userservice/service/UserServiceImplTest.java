@@ -4,7 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,7 +15,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.test.context.ActiveProfiles;
 
 import com.example.userservice.dto.request.CreateUserRequest;
 import com.example.userservice.dto.response.UserResponse;
@@ -24,7 +25,6 @@ import com.example.userservice.repository.UserRepository;
 import com.example.userservice.service.impl.UserServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
-@ActiveProfiles("test")
 public class UserServiceImplTest {
     @Mock
     private UserRepository userRepository;
@@ -35,9 +35,12 @@ public class UserServiceImplTest {
     private CreateUserRequest createUserRequest;
     private User user;
     private UserResponse userResponse;
+    private UUID testUuid;
     
     @BeforeEach
     void setUp() {
+        testUuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+        
         createUserRequest = CreateUserRequest.builder()
             .username("testUser")
             .email("test@example.com")
@@ -45,16 +48,18 @@ public class UserServiceImplTest {
             .build();
             
         user = User.builder()
-            .id(1L)
+            .id(testUuid)
             .username("testUser")
             .email("test@example.com")
             .password("hashedPassword")
             .build();
             
         userResponse = UserResponse.builder()
-            .id(1L)
+            .id(testUuid)
             .username("testUser")
             .email("test@example.com")
+            .createdAt(LocalDateTime.now())
+            .updatedAt(LocalDateTime.now())
             .build();
     }
 
@@ -115,57 +120,96 @@ public class UserServiceImplTest {
 
     @Test
     void getUserById_Success() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findById(testUuid)).thenReturn(Optional.of(user));
 
-        UserResponse result = userService.getUserById(1L);
+        UserResponse result = userService.getUserById(testUuid);
 
         assertEquals(userResponse.getId(), result.getId());
         assertEquals(userResponse.getUsername(), result.getUsername());
         assertEquals(userResponse.getEmail(), result.getEmail());
         
-        verify(userRepository, times(1)).findById(1L);
+        verify(userRepository, times(1)).findById(testUuid);
     }
 
     @Test
     void getUserById_ThrowsException_WhenUserNotFound() {
-        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+        when(userRepository.findById(testUuid)).thenReturn(Optional.empty());
 
         UserNotFoundException exception = assertThrows(UserNotFoundException.class, () -> {
-            userService.getUserById(1L);
+            userService.getUserById(testUuid);
         });
 
-        assertEquals("User not found with id: 1", exception.getMessage());
+        assertEquals("User not found with id: " + testUuid, exception.getMessage());
 
-        verify(userRepository, times(1)).findById(1L);
+        verify(userRepository, times(1)).findById(testUuid);
     }
     
     @Test
     void updateUser_Success() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findById(testUuid)).thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class))).thenReturn(user);
 
-        UserResponse result = userService.updateUser(1L, createUserRequest);
+        UserResponse result = userService.updateUser(testUuid, createUserRequest);
 
         assertEquals(userResponse.getId(), result.getId());
         assertEquals(userResponse.getUsername(), result.getUsername());
         assertEquals(userResponse.getEmail(), result.getEmail());
 
-        verify(userRepository, times(1)).findById(1L);
+        verify(userRepository, times(1)).findById(testUuid);
         verify(userRepository, times(1)).save(any(User.class));
     }
 
     @Test
     void updateUser_ThrowsException_WhenUserNotFound() {
-        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+        when(userRepository.findById(testUuid)).thenReturn(Optional.empty());
 
         UserNotFoundException exception = assertThrows(UserNotFoundException.class, () -> {
-            userService.updateUser(1L, createUserRequest);
+            userService.updateUser(testUuid, createUserRequest);
         });
 
-        assertEquals("User not found with id: 1", exception.getMessage());
+        assertEquals("User not found with id: " + testUuid, exception.getMessage());
 
-        verify(userRepository, times(1)).findById(1L);
+        verify(userRepository, times(1)).findById(testUuid);
         verify(userRepository, never()).save(any(User.class));
+    }
+    
+    @Test
+    void deleteUser_Success() {
+        when(userRepository.existsById(testUuid)).thenReturn(true);
+        
+        userService.deleteUser(testUuid);
+
+        verify(userRepository, times(1)).existsById(testUuid);
+        verify(userRepository, times(1)).deleteById(testUuid);
+    }
+
+    @Test
+    void deleteUser_ThrowsException_WhenUserNotFound() {
+        when(userRepository.existsById(testUuid)).thenReturn(false);
+
+        UserNotFoundException exception = assertThrows(UserNotFoundException.class, () -> {
+            userService.deleteUser(testUuid);
+        });
+
+        assertEquals("User not found with id: " + testUuid, exception.getMessage());
+
+        verify(userRepository, times(1)).existsById(testUuid);
+        verify(userRepository, never()).deleteById(any(UUID.class));
+    }
+
+    @Test
+    void deleteUser_ThrowsException_WhenForeignKeyConstraintViolation() {
+        doThrow(new DataIntegrityViolationException("Foreign key constraint violation"))
+                .when(userRepository).deleteById(testUuid);
+
+        when(userRepository.existsById(testUuid)).thenReturn(true);
+
+        assertThrows(DataIntegrityViolationException.class, () -> {
+            userService.deleteUser(testUuid);
+        });
+
+        verify(userRepository, times(1)).existsById(testUuid);
+        verify(userRepository, times(1)).deleteById(testUuid);
     }
 
     @Test
@@ -176,80 +220,32 @@ public class UserServiceImplTest {
                 .password("password123")
                 .build();
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findById(testUuid)).thenReturn(Optional.of(user));
         when(userRepository.existsByEmail("existing@example.com")).thenReturn(true);
 
         UserAlreadyExistsException exception = assertThrows(UserAlreadyExistsException.class, () -> {
-            userService.updateUser(1L, duplicateEmailRequest);
+            userService.updateUser(testUuid, duplicateEmailRequest);
         });
 
         assertEquals("Email existing@example.com is already registered", exception.getMessage());
 
-        verify(userRepository, times(1)).findById(1L);
+        verify(userRepository, times(1)).findById(testUuid);
         verify(userRepository, times(1)).existsByEmail("existing@example.com");
         verify(userRepository, never()).save(any(User.class));
     }
-    
-    @Test
-    void deleteUser_Success() {
-        when(userRepository.existsById(1L)).thenReturn(true);
-        
-        userService.deleteUser(1L);
 
-        verify(userRepository, times(1)).existsById(1L);
-        verify(userRepository, times(1)).deleteById(1L);
-    }
-
-    @Test
-    void deleteUser_ThrowsException_WhenUserNotFound() {
-        when(userRepository.existsById(1L)).thenReturn(false);
-
-        UserNotFoundException exception = assertThrows(UserNotFoundException.class, () -> {
-            userService.deleteUser(1L);
-        });
-
-        assertEquals("User not found with id: 1", exception.getMessage());
-
-        verify(userRepository, times(1)).existsById(1L);
-        verify(userRepository, never()).deleteById(anyLong());
-    }
-
-    @Test
-    void deleteUser_ThrowsException_WhenForeignKeyConstraintViolation() {
-        // モックの設定: ユーザー削除時にデータベースが例外をスローする
-        doThrow(new DataIntegrityViolationException("Foreign key constraint violation"))
-                .when(userRepository).deleteById(1L);
-
-        // 削除対象のユーザーが存在すると仮定
-        when(userRepository.existsById(1L)).thenReturn(true);
-
-        // DataIntegrityViolationExceptionがスローされることを検証
-        assertThrows(DataIntegrityViolationException.class, () -> {
-            userService.deleteUser(1L);
-        });
-
-        verify(userRepository, times(1)).existsById(1L);
-        verify(userRepository, times(1)).deleteById(1L);
-    }
-
-    // パスワードのバリデーションに関する異常系テスト
     @Test
     void createUser_ThrowsException_WhenPasswordTooShort() {
-        // パスワードが短すぎるリクエスト
         CreateUserRequest shortPasswordRequest = CreateUserRequest.builder()
                 .username("testUser")
                 .email("test@example.com")
-                .password("123") // 短すぎるパスワード
+                .password("123")
                 .build();
 
-        // UserServiceImplがパスワードの長さを検証していると仮定
-        // 実装に応じて適切に設定します
-        // 例えば、IllegalArgumentExceptionをスローする場合
         assertThrows(IllegalArgumentException.class, () -> {
             userService.createUser(shortPasswordRequest);
         });
 
-        // saveメソッドが呼ばれないことを検証
         verify(userRepository, never()).save(any(User.class));
     }
 }

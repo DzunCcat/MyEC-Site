@@ -5,6 +5,8 @@ import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.util.UUID;  // UUIDを使用するために追加
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,9 +31,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @SpringBootTest(
     classes = UserServiceApplication.class
 )
-@EnableAutoConfiguration(exclude = {FlywayAutoConfiguration.class}) // Flywayの自動構成を除外
+@EnableAutoConfiguration(exclude = {FlywayAutoConfiguration.class})
 @AutoConfigureMockMvc
-@AutoConfigureTestDatabase(replace = Replace.ANY) // H2データベースを強制的に使用
+@AutoConfigureTestDatabase(replace = Replace.ANY)
 @ActiveProfiles("test")
 public class UserIntegrationTest {
 
@@ -62,8 +64,6 @@ public class UserIntegrationTest {
                 .password(passwordEncoder.encode("password123"))
                 .build();
         existingUser = userRepository.save(existingUser);
-        // エンティティマネージャーを使用して即時フラッシュ（必要に応じて）
-        // entityManager.flush();
 
         // 更新用のリクエストデータを準備
         updateRequest = CreateUserRequest.builder()
@@ -101,11 +101,11 @@ public class UserIntegrationTest {
     @Test
     @WithMockUser
     void getUserByIdIntegrationTest() throws Exception {
-        mockMvc.perform(get("/api/users/{id}", existingUser.getId())
+        mockMvc.perform(get("/api/users/{id}", existingUser.getId().toString())
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id").value(existingUser.getId()))
+                .andExpect(jsonPath("$.id").value(existingUser.getId().toString()))
                 .andExpect(jsonPath("$.username").value("existingUser"))
                 .andExpect(jsonPath("$.email").value("existing@test.com"));
     }
@@ -113,7 +113,7 @@ public class UserIntegrationTest {
     @Test
     @WithMockUser(roles = {"USER", "ADMIN"})
     void updateUserIntegrationTest() throws Exception {
-        mockMvc.perform(put("/api/users/{id}", existingUser.getId())
+        mockMvc.perform(put("/api/users/{id}", existingUser.getId().toString())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().isOk())
@@ -130,7 +130,7 @@ public class UserIntegrationTest {
     @Test
     @WithMockUser(roles = {"USER", "ADMIN"})
     void deleteUserIntegrationTest() throws Exception {
-        mockMvc.perform(delete("/api/users/{id}", existingUser.getId()))
+        mockMvc.perform(delete("/api/users/{id}", existingUser.getId().toString()))
                 .andExpect(status().isNoContent());
 
         assertThat(userRepository.findById(existingUser.getId())).isEmpty();
@@ -141,17 +141,12 @@ public class UserIntegrationTest {
     @Test
     @WithMockUser
     void createUserIntegrationTest_DuplicateUsername_ShouldReturnConflict() throws Exception {
-        // @BeforeEachですでに "existingUser" は作成済みなので、
-        // 直接のリポジトリ操作は不要です
-
-        // APIを通じて重複ユーザー作成を試みる
         CreateUserRequest duplicateUsernameRequest = CreateUserRequest.builder()
-            .username("existingUser")          // @BeforeEachで作成済みのユーザー名
+            .username("existingUser")
             .email("uniqueemail@test.com")
             .password("password123")
             .build();
 
-        // APIエンドポイントを通じてテスト
         mockMvc.perform(post("/api/users")
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(duplicateUsernameRequest)))
@@ -160,25 +155,22 @@ public class UserIntegrationTest {
             .andExpect(jsonPath("$.message")
                 .value("Username existingUser is already registered"));
 
-        // データベースの状態確認
-        assertThat(userRepository.count()).isEqualTo(1);  // ユーザーが1人だけ存在することを確認
+        assertThat(userRepository.count()).isEqualTo(1);
     }
 
     @Test
     @WithMockUser
     void createUserIntegrationTest_DuplicateEmail_ShouldReturnConflict() throws Exception {
-        // 既存のユーザーを保存
         User duplicateUser = User.builder()
                 .username("uniqueUser")
-                .email("existingemail@test.com") // 既に存在するメールアドレス
+                .email("existingemail@test.com")
                 .password(passwordEncoder.encode("password123"))
                 .build();
         userRepository.saveAndFlush(duplicateUser);
 
-        // 重複するメールアドレスを持つ新規ユーザーのリクエスト
         CreateUserRequest duplicateEmailRequest = CreateUserRequest.builder()
                 .username("newUniqueUser")
-                .email("existingemail@test.com") // 重複するメールアドレス
+                .email("existingemail@test.com")
                 .password("password123")
                 .build();
 
@@ -193,7 +185,6 @@ public class UserIntegrationTest {
                 .andExpect(jsonPath("$.path").value("/api/users"))
                 .andExpect(jsonPath("$.details").doesNotExist());
 
-        // データベースの状態を確認
         User foundUser = userRepository.findByUsername("newUniqueUser").orElse(null);
         assertThat(foundUser).isNull();
     }
@@ -201,57 +192,71 @@ public class UserIntegrationTest {
     @Test
     @WithMockUser
     void getUserByIdIntegrationTest_UserNotFound_ShouldReturnNotFound() throws Exception {
-        Long nonExistentUserId = 999L;
+        UUID nonExistentUserId = UUID.randomUUID();
 
-        mockMvc.perform(get("/api/users/{id}", nonExistentUserId)
+        mockMvc.perform(get("/api/users/{id}", nonExistentUserId.toString())
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.error").value("Not Found"))
-                .andExpect(jsonPath("$.message").value("User not found with id: 999"))
-                .andExpect(jsonPath("$.path").value("/api/users/999"))
+                .andExpect(jsonPath("$.message").value("User not found with id: " + nonExistentUserId))
+                .andExpect(jsonPath("$.path").value("/api/users/" + nonExistentUserId))
                 .andExpect(jsonPath("$.details").doesNotExist());
     }
 
     @Test
-    @WithMockUser
-    void updateUserIntegrationTest_UserNotFound_ShouldReturnNotFound() throws Exception {
-        Long nonExistentUserId = 999L;
-
-        mockMvc.perform(put("/api/users/{id}", nonExistentUserId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(updateRequest)))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.error").value("Not Found"))
-                .andExpect(jsonPath("$.message").value("User not found with id: 999"))
-                .andExpect(jsonPath("$.path").value("/api/users/999"))
-                .andExpect(jsonPath("$.details").doesNotExist());
-    }
+	@WithMockUser
+	void updateUserIntegrationTest_UserNotFound_ShouldReturnNotFound() throws Exception {
+	    UUID nonExistentUserId = UUID.randomUUID();
+	
+	    mockMvc.perform(put("/api/users/{id}", nonExistentUserId)
+	            .contentType(MediaType.APPLICATION_JSON)
+	            .content(objectMapper.writeValueAsString(updateRequest)))
+	            .andExpect(status().isNotFound())
+	            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+	            .andExpect(jsonPath("$.status").value(404))
+	            .andExpect(jsonPath("$.error").value("Not Found"))
+	            .andExpect(jsonPath("$.message").value("User not found with id: " + nonExistentUserId))
+	            .andExpect(jsonPath("$.path").value("/api/users/" + nonExistentUserId))
+	            .andExpect(jsonPath("$.details").doesNotExist());
+	}
+	
+	@Test
+	@WithMockUser
+	void deleteUserIntegrationTest_UserNotFound_ShouldReturnNotFound() throws Exception {
+	    UUID nonExistentUserId = UUID.randomUUID();
+	    
+	    mockMvc.perform(delete("/api/users/{id}", nonExistentUserId))
+	            .andExpect(status().isNotFound())
+	            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+	            .andExpect(jsonPath("$.status").value(404))
+	            .andExpect(jsonPath("$.error").value("Not Found"))
+	            .andExpect(jsonPath("$.message").value("User not found with id: " + nonExistentUserId))
+	            .andExpect(jsonPath("$.path").value("/api/users/" + nonExistentUserId))
+	            .andExpect(jsonPath("$.details").doesNotExist());
+	}
 
     @Test
     @WithMockUser
-    void deleteUserIntegrationTest_UserNotFound_ShouldReturnNotFound() throws Exception {
-        Long nonExistentUserId = 999L;
+    void getUserByIdIntegrationTest_InvalidUUID_ShouldReturnBadRequest() throws Exception {
+        String invalidUuid = "invalid-uuid";
 
-        mockMvc.perform(delete("/api/users/{id}", nonExistentUserId))
-                .andExpect(status().isNotFound())
+        mockMvc.perform(get("/api/users/{id}", invalidUuid)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.error").value("Not Found"))
-                .andExpect(jsonPath("$.message").value("User not found with id: 999"))
-                .andExpect(jsonPath("$.path").value("/api/users/999"))
-                .andExpect(jsonPath("$.details").doesNotExist());
-    }
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("Invalid UUID format: " + invalidUuid));
+   }
 
     @Test
     @WithMockUser
     void createUserIntegrationTest_InvalidEmail_ShouldReturnBadRequest() throws Exception {
         CreateUserRequest invalidEmailRequest = CreateUserRequest.builder()
                 .username("invalidEmailUser")
-                .email("invalid-email-format") // 無効なメール形式
+                .email("invalid-email-format")
                 .password("password123")
                 .build();
 
@@ -265,7 +270,7 @@ public class UserIntegrationTest {
                 .andExpect(jsonPath("$.message").value("入力値の検証に失敗しました"))
                 .andExpect(jsonPath("$.path").value("/api/users"))
                 .andExpect(jsonPath("$.details").isArray())
-                .andExpect(jsonPath("$.details", hasSize(1))) // 具体的なエラーメッセージ数に応じて調整
+                .andExpect(jsonPath("$.details", hasSize(1)))
                 .andExpect(jsonPath("$.details[0]").value("有効なEmailを入力してください。"));
     }
 
@@ -275,7 +280,7 @@ public class UserIntegrationTest {
         CreateUserRequest shortPasswordRequest = CreateUserRequest.builder()
                 .username("shortPasswordUser")
                 .email("shortpassword@test.com")
-                .password("123") // 短すぎるパスワード
+                .password("123")
                 .build();
 
         mockMvc.perform(post("/api/users")
@@ -288,15 +293,14 @@ public class UserIntegrationTest {
                 .andExpect(jsonPath("$.message").value("入力値の検証に失敗しました"))
                 .andExpect(jsonPath("$.path").value("/api/users"))
                 .andExpect(jsonPath("$.details").isArray())
-                .andExpect(jsonPath("$.details", hasSize(1))) // 具体的なエラーメッセージ数に応じて調整
+                .andExpect(jsonPath("$.details", hasSize(1)))
                 .andExpect(jsonPath("$.details[0]").value("Passwordを8文字以上で入力してください。"));
     }
 
     @Test
     @WithMockUser(username = "regularUser", roles = {"USER"})
     void deleteUserIntegrationTest_Forbidden_ShouldReturnForbidden() throws Exception {
-        // 管理者権限が必要なエンドポイントに対して一般ユーザーがアクセス
-        mockMvc.perform(delete("/api/users/{id}", existingUser.getId()))
+        mockMvc.perform(delete("/api/users/{id}", existingUser.getId().toString()))
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value(403))
@@ -305,5 +309,4 @@ public class UserIntegrationTest {
                 .andExpect(jsonPath("$.path").value("/api/users/" + existingUser.getId()))
                 .andExpect(jsonPath("$.details").doesNotExist());
     }
-
 }

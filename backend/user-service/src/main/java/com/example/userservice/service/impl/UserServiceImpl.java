@@ -1,6 +1,7 @@
 package com.example.userservice.service.impl;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -51,7 +52,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserResponse updateUser(Long id, CreateUserRequest request) {
+    public UserResponse updateUser(UUID id, CreateUserRequest request) {
         log.info("Updating user with ID: {}", id);
         
         User existingUser = userRepository.findById(id)
@@ -80,7 +81,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserResponse getUserById(Long id) {
+    public UserResponse getUserById(UUID id) {
         log.info("Fetching user with ID: {}", id);
         
         User user = userRepository.findById(id)
@@ -105,7 +106,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void deleteUser(Long id) {
+    public void deleteUser(UUID id) {
         log.info("Deleting user with ID: {}", id);
         
         if (!userRepository.existsById(id)) {
@@ -130,8 +131,7 @@ public class UserServiceImpl implements UserService {
             log.warn("Attempted to create user with password shorter than 8 characters");
             throw new IllegalArgumentException("Password must be at least 8 characters long");
         }
-    	
-    	
+        
         if (userRepository.existsByUsername(request.getUsername())) {
             log.warn("Attempted to create user with existing username: {}", request.getUsername());
             throw new UserAlreadyExistsException("Username " + request.getUsername() + " is already registered");

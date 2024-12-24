@@ -1,0 +1,38 @@
+package com.example.userservice.entity;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.EntityListeners;
+import jakarta.persistence.MappedSuperclass;
+import lombok.Getter;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.LocalDateTime;
+
+/**
+ * エンティティの基底クラス。
+ * すべてのエンティティに共通する監査フィールド（作成日時、更新日時）を提供します。
+ */
+@Getter
+@MappedSuperclass
+@EntityListeners(AuditingEntityListener.class)
+public abstract class BaseEntity {
+
+    /**
+     * エンティティの作成日時。
+     * エンティティが最初に保存される際に自動的に設定されます。
+     * 一度設定されると変更できません。
+     */
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    /**
+     * エンティティの最終更新日時。
+     * エンティティが更新される度に自動的に更新されます。
+     */
+    @LastModifiedDate
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+}

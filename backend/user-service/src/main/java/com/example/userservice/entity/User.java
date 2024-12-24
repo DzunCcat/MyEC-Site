@@ -1,44 +1,48 @@
 package com.example.userservice.entity;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.UuidGenerator;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import lombok.experimental.SuperBuilder;
 
+/**
+ * ユーザー情報を表すエンティティクラス。
+ * BaseEntityを継承することで、作成日時と更新日時の自動管理機能を取り込んでいます。
+ */
 @Entity
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder  // BaseEntityのフィールドもビルダーで扱えるようにするため、@BuilderからSuperBuilderに変更
 @Table(name = "users")
 @ToString(exclude = "password")
-public class User implements Serializable {
-
+public class User extends BaseEntity implements Serializable {
+    
     private static final long serialVersionUID = 1L;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue
+    @UuidGenerator
+    @Column(name = "id", updatable = false, nullable = false)
+    private UUID id;
 
     @NotBlank(message="Usernameは必須です。")
     @Column(nullable = false, unique = true)
@@ -54,13 +58,6 @@ public class User implements Serializable {
     @Column(nullable = false)
     private String password;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
 
     public void setPassword(String rawPassword) {
         this.password = BCrypt.hashpw(rawPassword, BCrypt.gensalt());
@@ -70,4 +67,3 @@ public class User implements Serializable {
         return BCrypt.checkpw(rawPassword, this.password);
     }
 }
-

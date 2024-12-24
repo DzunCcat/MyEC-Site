@@ -2,6 +2,8 @@ package com.example.userservice.repository;
 
 import static org.assertj.core.api.Assertions.*;
 
+import java.util.UUID;
+
 import jakarta.validation.ConstraintViolationException;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -11,17 +13,20 @@ import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase.Replace;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.userservice.config.JpaConfig;
 import com.example.userservice.entity.User;
 
 @DataJpaTest(excludeAutoConfiguration = FlywayAutoConfiguration.class)
 @AutoConfigureTestDatabase(replace = Replace.ANY)
 @ActiveProfiles("test")
+@Import(JpaConfig.class)  // この行を追加
 public class UserRepositoryTest {
 
     @Autowired
@@ -29,17 +34,14 @@ public class UserRepositoryTest {
 
     private BCryptPasswordEncoder passwordEncoder;
 
-    // テストデータの作成に使用する共通の値
     private static final String TEST_PASSWORD = "password123";
     private static final String TEST_EMAIL_DOMAIN = "@test.com";
 
     @BeforeEach
     void setUp() {
-        // 各テストの前にデータベースをクリーンアップ
         userRepository.deleteAll();
         userRepository.flush();
         
-        // パスワードエンコーダーの初期化
         passwordEncoder = new BCryptPasswordEncoder();
     }
 
@@ -48,18 +50,16 @@ public class UserRepositoryTest {
     @Test
     @Transactional
     void saveUser_Success() {
-        // テストデータの準備
         User user = User.builder()
                 .username("testuser")
                 .email("testuser" + TEST_EMAIL_DOMAIN)
                 .password(passwordEncoder.encode(TEST_PASSWORD))
                 .build();
 
-        // テストの実行
         User savedUser = userRepository.save(user);
 
-        // 検証
         assertThat(savedUser.getId()).isNotNull();
+        assertThat(savedUser.getId()).isInstanceOf(UUID.class);
         assertThat(savedUser.getUsername()).isEqualTo("testuser");
         assertThat(savedUser.getEmail()).isEqualTo("testuser" + TEST_EMAIL_DOMAIN);
         assertThat(savedUser.getCreatedAt()).isNotNull();
@@ -70,7 +70,6 @@ public class UserRepositoryTest {
     @Test
     @Transactional
     void findByUsername_Success() {
-        // テストデータの準備
         User user = User.builder()
                 .username("finduser")
                 .email("finduser" + TEST_EMAIL_DOMAIN)
@@ -78,7 +77,6 @@ public class UserRepositoryTest {
                 .build();
         userRepository.save(user);
 
-        // テストの実行と検証
         User found = userRepository.findByUsername("finduser").orElse(null);
         assertThat(found).isNotNull();
         assertThat(found.getEmail()).isEqualTo("finduser" + TEST_EMAIL_DOMAIN);
@@ -87,7 +85,6 @@ public class UserRepositoryTest {
     @Test
     @Transactional
     void findByUsername_ReturnEmpty_WhenUserNotFound() {
-        // テストの実行と検証
         User found = userRepository.findByUsername("unknown").orElse(null);
         assertThat(found).isNull();
     }
@@ -95,7 +92,6 @@ public class UserRepositoryTest {
     @Test
     @Transactional
     void existsByUsername_ReturnTrue_WhenExists() {
-        // テストデータの準備
         User user = User.builder()
                 .username("existsuser")
                 .email("existsuser" + TEST_EMAIL_DOMAIN)
@@ -103,7 +99,6 @@ public class UserRepositoryTest {
                 .build();
         userRepository.save(user);
 
-        // テストの実行と検証
         boolean exists = userRepository.existsByUsername("existsuser");
         assertThat(exists).isTrue();
     }
@@ -111,7 +106,6 @@ public class UserRepositoryTest {
     @Test
     @Transactional
     void existsByUsername_ReturnFalse_WhenNotExists() {
-        // テストの実行と検証
         boolean exists = userRepository.existsByUsername("nonexistent");
         assertThat(exists).isFalse();
     }
@@ -119,7 +113,6 @@ public class UserRepositoryTest {
     @Test
     @Transactional
     void deleteUser_Success() {
-        // テストデータの準備
         User user = User.builder()
                 .username("deleteuser")
                 .email("deleteuser" + TEST_EMAIL_DOMAIN)
@@ -127,11 +120,9 @@ public class UserRepositoryTest {
                 .build();
         User savedUser = userRepository.save(user);
 
-        // テストの実行
         userRepository.delete(savedUser);
         userRepository.flush();
 
-        // 検証
         boolean exists = userRepository.existsById(savedUser.getId());
         assertThat(exists).isFalse();
     }
@@ -141,7 +132,6 @@ public class UserRepositoryTest {
     @Test
     @Transactional
     void saveUser_DuplicateUsername_ShouldThrowException() {
-        // 既存のユーザーを保存
         User user1 = User.builder()
                 .username("duplicateUser")
                 .email("user1" + TEST_EMAIL_DOMAIN)
@@ -149,14 +139,12 @@ public class UserRepositoryTest {
                 .build();
         userRepository.saveAndFlush(user1);
 
-        // 重複したユーザー名を持つ新しいユーザーを作成
         User user2 = User.builder()
                 .username("duplicateUser")
                 .email("user2" + TEST_EMAIL_DOMAIN)
                 .password(passwordEncoder.encode(TEST_PASSWORD))
                 .build();
 
-        // テストの実行と検証
         assertThatThrownBy(() -> userRepository.saveAndFlush(user2))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("CONSTRAINT_INDEX")
@@ -166,7 +154,6 @@ public class UserRepositoryTest {
     @Test
     @Transactional
     void saveUser_DuplicateEmail_ShouldThrowException() {
-        // 既存のユーザーを保存
         User user1 = User.builder()
                 .username("user1")
                 .email("duplicate" + TEST_EMAIL_DOMAIN)
@@ -174,14 +161,12 @@ public class UserRepositoryTest {
                 .build();
         userRepository.saveAndFlush(user1);
 
-        // 重複したメールアドレスを持つ新しいユーザーを作成
         User user2 = User.builder()
                 .username("user2")
                 .email("duplicate" + TEST_EMAIL_DOMAIN)
                 .password(passwordEncoder.encode(TEST_PASSWORD))
                 .build();
 
-        // テストの実行と検証
         assertThatThrownBy(() -> userRepository.saveAndFlush(user2))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("CONSTRAINT_INDEX")
@@ -191,14 +176,12 @@ public class UserRepositoryTest {
     @Test
     @Transactional
     void saveUser_NullUsername_ShouldThrowException() {
-        // Nullのユーザー名を持つユーザーを作成
         User user = User.builder()
                 .username(null)
                 .email("nullusername" + TEST_EMAIL_DOMAIN)
                 .password(passwordEncoder.encode(TEST_PASSWORD))
                 .build();
 
-        // テストの実行と検証
         assertThatThrownBy(() -> userRepository.saveAndFlush(user))
                 .isInstanceOfAny(
                     DataIntegrityViolationException.class,
@@ -213,34 +196,34 @@ public class UserRepositoryTest {
     @Test
     @Transactional
     void deleteUser_NonExistentUser_ShouldThrowException() {
-        Long nonExistentUserId = 999L;
+        UUID nonExistentUserId = UUID.randomUUID();
         
-        // 重要: ServiceImplの実装に合わせて、repositoryのメソッドをテスト
         boolean exists = userRepository.existsById(nonExistentUserId);
         assertThat(exists).isFalse();
         
-        // deleteByIdの実行をテスト
         userRepository.deleteById(nonExistentUserId);
-        // 例外が発生しないことを確認（これがdeleteByIdの実際の動作）
     }
-    // タイムスタンプ検証用テスト
 
     @Test
     @Transactional
     void saveUser_ShouldSetTimestamps() {
-        // テストデータの準備
         User user = User.builder()
                 .username("timeuser")
                 .email("timeuser" + TEST_EMAIL_DOMAIN)
                 .password(passwordEncoder.encode(TEST_PASSWORD))
                 .build();
 
-        // テストの実行
-        User savedUser = userRepository.save(user);
+        User savedUser = userRepository.saveAndFlush(user); 
         
-        // 検証
         assertThat(savedUser.getCreatedAt()).isNotNull();
         assertThat(savedUser.getUpdatedAt()).isNotNull();
         assertThat(savedUser.getCreatedAt()).isEqualToIgnoringNanos(savedUser.getUpdatedAt());
+
+        savedUser.setEmail("updated" + TEST_EMAIL_DOMAIN);
+        User updatedUser = userRepository.saveAndFlush(savedUser);
+
+        assertThat(updatedUser.getCreatedAt()).isEqualTo(savedUser.getCreatedAt());  
+        assertThat(updatedUser.getUpdatedAt()).isAfter(savedUser.getCreatedAt());    
     }
+
 }
