@@ -8,6 +8,12 @@
 		<item value="order-service"/>
 	</list>
 	<list key="searchhistory">
+		<item value="assertNotNull(result.getCreatedAt())"/>
+		<item value="createUser_Success"/>
+		<item value="succe"/>
+		<item value="convertToUserResponse"/>
+		<item value="ShouldSetTimestamps"/>
+		<item value="saveUser_ShouldSetTimestamps"/>
 		<item value="taken"/>
 		<item value="already"/>
 		<item value="already registered"/>
@@ -17,7 +23,5 @@
 		<item value="user"/>
 		<item value="users"/>
 		<item value="security"/>
-		<item value="&lt;java.version&gt;21&lt;/java.version&gt;&#x0A;"/>
-		<item value="user-service"/>
 	</list>
 </section>
