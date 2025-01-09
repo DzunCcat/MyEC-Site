@@ -13,7 +13,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import org.hibernate.annotations.UuidGenerator;
-import org.springframework.security.crypto.bcrypt.BCrypt;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -59,11 +58,8 @@ public class User extends BaseEntity implements Serializable {
     private String password;
 
 
-    public void setPassword(String rawPassword) {
-        this.password = BCrypt.hashpw(rawPassword, BCrypt.gensalt());
+    public void setPassword(String password) {
+        this.password = password;
     }
 
-    public boolean validatePassword(String rawPassword) {
-        return BCrypt.checkpw(rawPassword, this.password);
-    }
 }

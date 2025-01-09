@@ -7,7 +7,6 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 
 import com.example.userservice.dto.request.CreateUserRequest;
@@ -17,15 +16,18 @@ import com.example.userservice.exception.business.UserAlreadyExistsException;
 import com.example.userservice.exception.business.UserNotFoundException;
 import com.example.userservice.exception.validation.ValidationException;
 import com.example.userservice.repository.UserRepository;
+import com.example.userservice.security.PasswordSecurity;
 import com.example.userservice.service.UserService;
 
 @Service
 public class UserServiceImpl implements UserService {
     private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
     private final UserRepository userRepository;
+    private final PasswordSecurity passwordSecurity;
 
-    public UserServiceImpl(UserRepository userRepository) {
+    public UserServiceImpl(UserRepository userRepository, PasswordSecurity passwordSecurity) {
         this.userRepository = userRepository;
+        this.passwordSecurity = passwordSecurity;
     }
 
     @Override
@@ -35,10 +37,12 @@ public class UserServiceImpl implements UserService {
         validateNewUser(request);
 
         try {
+        	String hashedPassword = passwordSecurity.hashPassword(request.getPassword());
+        	
             User user = User.builder()
                     .username(request.getUsername())
                     .email(request.getEmail())
-                    .password(BCrypt.hashpw(request.getPassword(), BCrypt.gensalt()))
+                    .password(hashedPassword)
                     .build();
 
             User savedUser = userRepository.save(user);
@@ -67,7 +71,8 @@ public class UserServiceImpl implements UserService {
             existingUser.setUsername(request.getUsername());
             existingUser.setEmail(request.getEmail());
             if (request.getPassword() != null) {
-                existingUser.setPassword(BCrypt.hashpw(request.getPassword(), BCrypt.gensalt()));
+            	String hashedPassword = passwordSecurity.hashPassword(request.getPassword()); 
+                existingUser.setPassword(hashedPassword);
             }
 
             User updatedUser = userRepository.save(existingUser);

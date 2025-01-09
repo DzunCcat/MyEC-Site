@@ -86,7 +86,8 @@ user-service/
 │   │   │       ├── repository/
 │   │   │       │   └── UserRepository.java           // データアクセス層
 │   │   │       ├── security/
-│   │   │       │   └── UserSecurity.java            // セキュリティ関連
+│   │   │       │   ├── UserSecurity.java            // セキュリティ関連
+│   │   │       │   └── PasswordSecurity.java
 │   │   │       ├── service/
 │   │   │       │   ├── impl/
 │   │   │       │   │   └── UserServiceImpl.java     // サービス実装

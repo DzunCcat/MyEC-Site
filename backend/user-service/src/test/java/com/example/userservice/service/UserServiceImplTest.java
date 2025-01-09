@@ -22,12 +22,16 @@ import com.example.userservice.entity.User;
 import com.example.userservice.exception.business.UserAlreadyExistsException;
 import com.example.userservice.exception.business.UserNotFoundException;
 import com.example.userservice.repository.UserRepository;
+import com.example.userservice.security.PasswordSecurity;
 import com.example.userservice.service.impl.UserServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
 public class UserServiceImplTest {
     @Mock
     private UserRepository userRepository;
+    
+    @Mock
+    private PasswordSecurity passwordSecurity;
     
     @InjectMocks
     private UserServiceImpl userService;
