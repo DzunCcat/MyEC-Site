@@ -17,7 +17,12 @@ spring:
         "[format_sql]": true
     database-platform: org.hibernate.dialect.PostgreSQLDialect
 
-# eurekaの設定をトップレベルに移動
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: "http://auth-server:8080/realms/myrealm"
+
 eureka:
   client:
     service-url:

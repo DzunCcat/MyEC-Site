@@ -4,11 +4,11 @@ import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -18,7 +18,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -49,9 +50,15 @@ public class UserControllerTest {
     @MockBean(name = "userSecurity")
     private UserSecurity userSecurity;
 
+    @MockBean
+    private JwtDecoder jwtDecoder;
+
     private CreateUserRequest createUserRequest;
     private UserResponse userResponse;
     private UUID testUuid;
+
+    private static final String USER_TOKEN_VALUE = "dummyUserToken";
+    private static final String ADMIN_TOKEN_VALUE = "dummyAdminToken";
 
     @BeforeEach
     void setUp() {
@@ -70,6 +77,21 @@ public class UserControllerTest {
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
+
+        Jwt userJwt = Jwt.withTokenValue(USER_TOKEN_VALUE)
+            .header("alg", "HS256")
+            .claim("sub", "testuser")         
+            .claim("scope", "ROLE_USER")     
+            .build();
+
+        Jwt adminJwt = Jwt.withTokenValue(ADMIN_TOKEN_VALUE)
+            .header("alg", "HS256")
+            .claim("sub", "adminuser")
+            .claim("authorities", List.of("ROLE_ADMIN"))
+            .build();
+
+        when(jwtDecoder.decode(USER_TOKEN_VALUE)).thenReturn(userJwt);
+        when(jwtDecoder.decode(ADMIN_TOKEN_VALUE)).thenReturn(adminJwt);
     }
 
     @Test
@@ -90,11 +112,11 @@ public class UserControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser", roles = "USER")
     void getUserById_Success() throws Exception {
         when(userService.getUserById(any(UUID.class))).thenReturn(userResponse);
 
-        mockMvc.perform(get("/api/users/" + testUuid))
+        mockMvc.perform(get("/api/users/" + testUuid)
+                .header("Authorization", "Bearer " + USER_TOKEN_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(testUuid.toString()))
@@ -104,17 +126,28 @@ public class UserControllerTest {
                 .andExpect(jsonPath("$.updatedAt").exists());
     }
 
+	//user delete
     @Test
-    @WithMockUser(username = "admin", roles = "ADMIN")
-    void deleteUser_Success() throws Exception {
+    void deleteUser_SuccessAsOwner() throws Exception {
+        doNothing().when(userService).deleteUser(any(UUID.class));
+        when(userSecurity.isOwner(any(), eq(testUuid.toString()))).thenReturn(true);
+
+        mockMvc.perform(delete("/api/users/" + testUuid)
+                .header("Authorization", "Bearer " + USER_TOKEN_VALUE))
+                .andExpect(status().isNoContent());
+    }
+
+	//admin delete
+    @Test
+    void deleteUser_SuccessAsAdmin() throws Exception {
         doNothing().when(userService).deleteUser(any(UUID.class));
 
-        mockMvc.perform(delete("/api/users/" + testUuid))
+        mockMvc.perform(delete("/api/users/" + testUuid)
+                .header("Authorization", "Bearer " + ADMIN_TOKEN_VALUE))
                 .andExpect(status().isNoContent());
     }
 
     @Test
-    @WithMockUser(username = "testuser", roles = "USER")
     void updateUser_Success() throws Exception {
         when(userService.updateUser(any(UUID.class), any(CreateUserRequest.class)))
             .thenReturn(userResponse);
@@ -124,7 +157,7 @@ public class UserControllerTest {
         mockMvc.perform(put("/api/users/" + testUuid)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(createUserRequest))
-                .with(user("testuser").roles("USER")))
+                .header("Authorization", "Bearer " + USER_TOKEN_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(testUuid.toString()))
@@ -161,12 +194,12 @@ public class UserControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser", roles = "USER")
     void getUserById_NotFound() throws Exception {
         when(userService.getUserById(any(UUID.class)))
             .thenThrow(new UserNotFoundException("User not found with id: " + testUuid));
 
-        mockMvc.perform(get("/api/users/" + testUuid))
+        mockMvc.perform(get("/api/users/" + testUuid)
+                .header("Authorization", "Bearer " + USER_TOKEN_VALUE))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value(404))
@@ -177,9 +210,9 @@ public class UserControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser", roles = "USER")
     void getUserById_InvalidUUID() throws Exception {
-        mockMvc.perform(get("/api/users/invalid-uuid"))
+        mockMvc.perform(get("/api/users/" + "invalid-uuid")
+                .header("Authorization", "Bearer " + USER_TOKEN_VALUE))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value(400))
@@ -213,7 +246,6 @@ public class UserControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser", roles = "USER")
     void updateUser_NotFound() throws Exception {
         when(userService.updateUser(any(UUID.class), any(CreateUserRequest.class)))
             .thenThrow(new UserNotFoundException("User not found with id: " + testUuid));
@@ -222,7 +254,8 @@ public class UserControllerTest {
 
         mockMvc.perform(put("/api/users/" + testUuid)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(createUserRequest)))
+                .content(objectMapper.writeValueAsString(createUserRequest))
+                .header("Authorization", "Bearer " + USER_TOKEN_VALUE))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value(404))
@@ -233,12 +266,12 @@ public class UserControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser", roles = "USER")
     void getUserById_InternalServerError() throws Exception {
         when(userService.getUserById(any(UUID.class)))
             .thenThrow(new RuntimeException("Unexpected error"));
 
-        mockMvc.perform(get("/api/users/" + testUuid))
+        mockMvc.perform(get("/api/users/" + testUuid)
+                .header("Authorization", "Bearer " + USER_TOKEN_VALUE))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value(500))
@@ -261,11 +294,11 @@ public class UserControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser", roles = "USER")
     void deleteUser_Forbidden() throws Exception {
         when(userSecurity.isOwner(any(), eq(testUuid.toString()))).thenReturn(false);
 
-        mockMvc.perform(delete("/api/users/" + testUuid))
+        mockMvc.perform(delete("/api/users/" + testUuid)
+                .header("Authorization", "Bearer " + USER_TOKEN_VALUE))
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value(403))

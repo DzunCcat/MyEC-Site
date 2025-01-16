@@ -1,4 +1,3 @@
-// Java
 package com.example.apigateway.filter;
 
 import org.slf4j.Logger;

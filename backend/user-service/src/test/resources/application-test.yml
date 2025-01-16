@@ -23,10 +23,11 @@ spring:
     enabled: false  # Flywayを無効化
 
   security:
-    user:
-      name: testuser
-      password: testpass
-      roles: USER
+    oauth2:
+      resourceserver:
+        jwt:
+          # テスト用ダミーIssuer
+          issuer-uri: "http://dummy-issuer"
 
 eureka:
   client:
