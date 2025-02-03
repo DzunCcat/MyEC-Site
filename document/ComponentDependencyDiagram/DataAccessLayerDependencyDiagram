@@ -1,0 +1,60 @@
+@startuml
+package "Data Access Layer" {
+    component "Entities" {
+        [Base Entity] as BaseEntity
+        [User Entity] as UserEntity
+        note right of BaseEntity
+            共通の監査フィールド
+            - createdAt
+            - updatedAt
+        end note
+    }
+
+    component "Repositories" {
+        interface "JpaRepository" as JpaRepo
+        interface "User Repository" as UserRepo
+        [User Repository Impl] as UserRepoImpl
+    }
+
+    component "Configuration" {
+        [JPA Config] as JpaConfig
+        [Audit Config] as AuditConfig
+        note right of AuditConfig
+            エンティティの
+            監査情報自動設定
+        end note
+    }
+}
+
+package "Service Layer" {
+    [User Service] as UserService
+    [Transaction Manager] as TxManager
+}
+
+database "Database" {
+    [User Table] as UserTable
+    [Audit Log Table] as AuditTable
+}
+
+' エンティティの継承関係
+BaseEntity <|-- UserEntity : "継承"
+
+' リポジトリの依存関係
+JpaRepo <|-- UserRepo : "継承"
+UserRepo <|.. UserRepoImpl : "実装"
+UserRepoImpl --> UserEntity : "エンティティ操作"
+
+' 設定の依存関係
+JpaConfig --> UserRepo : "リポジトリ設定"
+AuditConfig --> BaseEntity : "監査設定"
+TxManager --> JpaConfig : "トランザクション管理"
+
+' サービス層との依存関係
+UserService --> UserRepo : "データアクセス"
+UserService --> TxManager : "トランザクション制御"
+
+' データベースとの依存関係
+UserRepoImpl --> UserTable : "CRUD操作"
+AuditConfig --> AuditTable : "監査ログ記録"
+
+@enduml

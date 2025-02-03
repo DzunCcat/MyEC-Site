@@ -1,0 +1,191 @@
+@startuml
+!include <C4/C4_Container>
+
+title ECサイトの包括的アーキテクチャ - 現在の実装状態
+
+' スタイル定義
+skinparam componentStyle uml2
+skinparam packageStyle rectangle
+
+' フロントエンド層
+package "Frontend (Next.js)" {
+    component "Web Application" as Frontend {
+        port 3000 as FrontendPort
+    }
+}
+
+' APIゲートウェイ層
+package "API Gateway Layer" {
+    component "Spring Cloud Gateway" as Gateway {
+        component "Authentication Filter" as AuthFilter {
+            note right
+                - Bearer token validation
+                - Token format checking
+                - Error response handling
+            end note
+        }
+        component "Validation Filter" as ValidFilter {
+            note right
+                - Content-Type validation
+                - Request size limits (10MB)
+                - JSON format validation
+            end note
+        }
+        component "Fallback Controller" as FallbackController {
+            note right
+                Service-specific fallbacks:
+                - User Service
+                - Product Service
+                - Cart Service
+                - Order Service
+            end note
+        }
+        component "Global Error Handler" as GatewayErrorHandler
+    }
+}
+
+' サービスディスカバリー層
+package "Service Discovery" {
+    component "Eureka Server" as Eureka {
+        port 8761 as EurekaPort
+        database "Registry DB" as RegistryDB
+    }
+}
+
+' ユーザーサービス（実装済み）
+package "User Service (8081)" {
+    ' APIレイヤー
+    component "API Layer" as UserAPI {
+        component "User Controller" as UC {
+            note right
+                Endpoints:
+                POST   /api/users
+                GET    /api/users/{id}
+                PUT    /api/users/{id}
+                DELETE /api/users/{id}
+            end note
+        }
+        component "Global Exception Handler" as UEH
+    }
+    
+    ' セキュリティレイヤー
+    component "Security" as SecurityLayer {
+        component "Security Config" as SC {
+            note right
+                - OAuth2 Resource Server
+                - JWT Authentication
+                - Role-based access
+            end note
+        }
+        component "User Security" as US
+        component "Password Security" as PS
+    }
+    
+    ' ビジネスレイヤー
+    component "Business Layer" as BusinessLayer {
+        interface "User Service" as USI
+        component "User Service Impl" as USIMPL {
+            note right
+                - User management
+                - Password hashing
+                - Validation logic
+            end note
+        }
+    }
+    
+    ' データアクセスレイヤー
+    component "Data Access Layer" as DataLayer {
+        component "User Repository" as UR
+        component "User Entity" as UE
+        component "Base Entity" as BE {
+            note right
+                Audit fields:
+                - createdAt
+                - updatedAt
+            end note
+        }
+    }
+}
+
+' その他のサービス（未実装）
+package "Other Services" {
+    component "Product Service (8082)" as ProductService #lightgray
+    component "Cart Service (8084)" as CartService #lightgray
+    component "Order Service (8083)" as OrderService #lightgray
+}
+
+' インフラストラクチャ層
+package "Infrastructure" {
+    database "PostgreSQL" as DB {
+        storage "Users Table" as UsersTable
+    }
+    
+    component "Docker Environment" as Docker {
+        component "Docker Compose" as DockerCompose {
+            note right
+                Services:
+                - Frontend (3000)
+                - Gateway (8080)
+                - Eureka (8761)
+                - User Service (8081)
+                - PostgreSQL (5432)
+                - PgAdmin (5050)
+            end note
+        }
+    }
+    
+    component "Database Management" as DBManagement {
+        component "PgAdmin" as PgAdmin
+    }
+}
+
+' 関係性の定義
+Frontend --> Gateway : "HTTPS"
+Gateway --> Eureka : "Service Discovery"
+Gateway --> UserAPI : "REST /api/users/**"
+Gateway --> ProductService : "REST /api/products/**"
+Gateway --> CartService : "REST /api/carts/**"
+Gateway --> OrderService : "REST /api/orders/**"
+
+' User Service内部の関係
+UC ..> US : "Security Check"
+UC --> USI : "Business Logic"
+USI <|.. USIMPL : "Implements"
+USIMPL --> UR : "Data Access"
+USIMPL --> PS : "Password Hash"
+UE --|> BE : "Extends"
+UR --> UE : "Manages"
+UE --> UsersTable : "Persists"
+
+' サービス登録
+UserAPI --> Eureka : "Register"
+ProductService --> Eureka : "Register"
+CartService --> Eureka : "Register"
+OrderService --> Eureka : "Register"
+
+' Exception Flow
+UC ..> UEH : "Handles Exceptions"
+AuthFilter ..> GatewayErrorHandler : "Handles Errors"
+ValidFilter ..> GatewayErrorHandler : "Handles Errors"
+
+' テスト構成
+package "Testing" {
+    component "Unit Tests" as UnitTests {
+        note right
+            - UserServiceImplTest
+            - UserRepositoryTest
+            - SecurityConfigTest
+        end note
+    }
+    component "Integration Tests" as IntegrationTests {
+        note right
+            - UserControllerTest
+            - UserIntegrationTest
+        end note
+    }
+}
+
+UnitTests ..> BusinessLayer : "Tests"
+IntegrationTests ..> UserAPI : "Tests"
+
+@enduml

@@ -1,0 +1,53 @@
+@startuml
+title 在庫管理フロー
+
+actor "System Timer" as Timer
+actor Admin
+participant "Product\nService" as ProductService
+participant "Order\nService" as OrderService
+participant "Notification\nService" as NotificationService
+database "Database" as DB
+
+== 定期在庫チェック ==
+Timer -> ProductService: 在庫レベル確認（定期実行）
+ProductService -> DB: 在庫数取得
+DB --> ProductService: 在庫情報
+
+loop 全商品
+    alt 在庫が閾値以下
+        ProductService -> NotificationService: 在庫アラート発行
+        NotificationService -> Admin: アラートメール送信
+    end
+end
+
+== 在庫自動補充 ==
+ProductService -> DB: 自動発注閾値確認
+DB --> ProductService: 発注設定情報
+
+alt 自動発注有効
+    ProductService -> ProductService: 発注数計算
+    ProductService -> DB: 発注情報登録
+    DB --> ProductService: 登録完了
+    ProductService -> NotificationService: 発注通知
+    NotificationService -> Admin: 発注報告メール
+end
+
+== 在庫実地棚卸 ==
+Admin -> ProductService: 棚卸開始
+ProductService -> DB: 現在の在庫数取得
+DB --> ProductService: 在庫情報
+ProductService --> Admin: 在庫リスト提供
+
+Admin -> ProductService: 実地棚卸結果登録
+ProductService -> ProductService: 差異チェック
+
+alt 在庫差異あり
+    ProductService -> DB: 在庫数修正
+    ProductService -> NotificationService: 差異レポート作成
+    NotificationService -> Admin: 差異レポートメール
+else 在庫差異なし
+    ProductService -> NotificationService: 棚卸完了通知
+    NotificationService -> Admin: 完了通知メール
+end
+
+@enduml

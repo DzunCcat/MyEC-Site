@@ -1,0 +1,35 @@
+@startuml
+title 認証フローのシーケンス
+
+actor User
+participant "Frontend\n(Next.js)" as Frontend
+participant "API Gateway" as Gateway
+participant "User Service" as UserService
+database "PostgreSQL" as DB
+
+== ユーザー登録フロー ==
+User -> Frontend: 登録情報入力
+Frontend -> Gateway: POST /api/users
+Gateway -> UserService: ユーザー作成リクエスト
+
+UserService -> UserService: パスワードハッシュ化
+UserService -> DB: ユーザー情報保存
+DB --> UserService: 保存成功
+UserService --> Gateway: ユーザー作成完了
+Gateway --> Frontend: 登録完了レスポンス
+Frontend --> User: 登録完了表示
+
+== ログインフロー ==
+User -> Frontend: ログイン情報入力
+Frontend -> Gateway: POST /api/auth/login
+Gateway -> UserService: 認証リクエスト
+UserService -> DB: ユーザー情報取得
+DB --> UserService: ユーザー情報
+UserService -> UserService: パスワード検証
+UserService -> UserService: JWTトークン生成
+UserService --> Gateway: 認証完了・トークン返却
+Gateway --> Frontend: トークン含むレスポンス
+Frontend -> Frontend: トークンを保存
+Frontend --> User: ログイン完了表示
+
+@enduml

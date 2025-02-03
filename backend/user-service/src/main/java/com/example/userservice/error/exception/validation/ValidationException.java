@@ -1,10 +1,10 @@
-package com.example.userservice.exception.validation;
+package com.example.userservice.error.exception.validation;
 
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
 
-import com.example.userservice.exception.base.BaseException;
+import com.example.userservice.error.exception.base.BaseException;
 
 public class ValidationException extends BaseException {
     private final List<String> details;

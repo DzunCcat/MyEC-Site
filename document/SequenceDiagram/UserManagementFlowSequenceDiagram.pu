@@ -1,0 +1,78 @@
+@startuml
+title ユーザー管理フロー
+
+actor User
+participant "Frontend\n(Next.js)" as Frontend
+participant "API Gateway" as Gateway
+participant "User\nService" as UserService
+participant "Email\nService" as EmailService
+database "Database" as DB
+
+== プロフィール更新 ==
+User -> Frontend: プロフィール更新要求
+Frontend -> Gateway: PUT /api/users/profile
+Gateway -> UserService: プロフィール更新処理
+
+UserService -> DB: 現在のプロフィール取得
+DB --> UserService: プロフィールデータ
+UserService -> UserService: バリデーション実行
+
+alt バリデーション成功
+    UserService -> DB: プロフィール更新
+    DB --> UserService: 更新完了
+    UserService -> EmailService: 更新通知メール送信
+    EmailService -> User: メール送信
+    UserService --> Gateway: 更新成功
+    Gateway --> Frontend: 成功レスポンス
+    Frontend --> User: 更新完了表示
+else バリデーション失敗
+    UserService --> Gateway: バリデーションエラー
+    Gateway --> Frontend: エラーレスポンス
+    Frontend --> User: エラー表示
+end
+
+== パスワード変更 ==
+User -> Frontend: パスワード変更要求
+Frontend -> Gateway: PUT /api/users/password
+Gateway -> UserService: パスワード変更処理
+UserService -> DB: 現在のパスワード確認
+DB --> UserService: パスワードハッシュ
+
+alt パスワード検証成功
+    UserService -> UserService: 新パスワードハッシュ化
+    UserService -> DB: パスワード更新
+    DB --> UserService: 更新完了
+    UserService -> EmailService: パスワード変更通知
+    EmailService -> User: セキュリティメール送信
+    UserService --> Gateway: 変更成功
+    Gateway --> Frontend: 成功レスポンス
+    Frontend --> User: 変更完了表示
+else パスワード検証失敗
+    UserService --> Gateway: 認証エラー
+    Gateway --> Frontend: エラーレスポンス
+    Frontend --> User: エラー表示
+end
+
+== アカウント削除 ==
+User -> Frontend: アカウント削除要求
+Frontend -> Gateway: DELETE /api/users
+Gateway -> UserService: 削除処理開始
+
+UserService -> DB: アカウント情報取得
+DB --> UserService: アカウントデータ
+
+alt 削除可能
+    UserService -> DB: 論理削除実行
+    DB --> UserService: 削除完了
+    UserService -> EmailService: 削除完了通知
+    EmailService -> User: 確認メール送信
+    UserService --> Gateway: 削除成功
+    Gateway --> Frontend: 成功レスポンス
+    Frontend --> User: 削除完了表示
+else 削除不可（未完了の注文など）
+    UserService --> Gateway: 削除不可エラー
+    Gateway --> Frontend: エラーレスポンス
+    Frontend --> User: エラー表示
+end
+
+@enduml

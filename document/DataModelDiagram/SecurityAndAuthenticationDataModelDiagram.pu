@@ -1,0 +1,69 @@
+@startuml
+!define table(x) class x << (T,#FFAAAA) >>
+!define primary_key(x) <b><u>x</u></b>
+!define foreign_key(x) <u>x</u>
+!define unique(x) <color:blue><i>x</i></color>
+!define index(x) <color:green>x</color>
+!define required(x) <b>x</b>
+
+title セキュリティと認証モデル
+
+table(user_sessions) {
+    primary_key(id): UUID
+    foreign_key(user_id): UUID
+    required(token_hash): VARCHAR(255)
+    required(refresh_token_hash): VARCHAR(255)
+    required(status): ENUM('ACTIVE', 'EXPIRED', 'REVOKED')
+    required(ip_address): VARCHAR(45)
+    user_agent: VARCHAR(255)
+    required(last_activity): TIMESTAMP
+    required(expires_at): TIMESTAMP
+    required(created_at): TIMESTAMP
+    required(updated_at): TIMESTAMP
+}
+
+table(password_reset_tokens) {
+    primary_key(id): UUID
+    foreign_key(user_id): UUID
+    required(token_hash): VARCHAR(255)
+    required(status): ENUM('ACTIVE', 'USED', 'EXPIRED')
+    required(expires_at): TIMESTAMP
+    used_at: TIMESTAMP
+    required(created_at): TIMESTAMP
+    required(updated_at): TIMESTAMP
+}
+
+table(auth_failures) {
+    primary_key(id): UUID
+    username: VARCHAR(255)
+    required(ip_address): VARCHAR(45)
+    required(failure_type): ENUM('INVALID_CREDENTIALS', 'ACCOUNT_LOCKED', 'INVALID_TOKEN')
+    required(attempt_count): INT
+    blocked_until: TIMESTAMP
+    required(created_at): TIMESTAMP
+}
+
+table(role_permissions) {
+    primary_key(id): UUID
+    required(role): VARCHAR(50)
+    required(permission): VARCHAR(100)
+    required(created_at): TIMESTAMP
+    required(updated_at): TIMESTAMP
+}
+
+table(user_roles) {
+    primary_key(id): UUID
+    foreign_key(user_id): UUID
+    required(role): VARCHAR(50)
+    required(created_at): TIMESTAMP
+    required(updated_at): TIMESTAMP
+}
+
+' リレーションシップ
+users "1" -- "0..*" user_sessions
+users "1" -- "0..*" password_reset_tokens
+users "1" -- "0..*" auth_failures
+users "1" -- "0..*" user_roles
+role_permissions "1" -- "0..*" user_roles
+
+@enduml

@@ -1,0 +1,92 @@
+@startuml
+!define table(x) class x << (T,#FFAAAA) >>
+!define primary_key(x) <b><u>x</u></b>
+!define foreign_key(x) <u>x</u>
+!define unique(x) <color:blue><i>x</i></color>
+!define index(x) <color:green>x</color>
+!define required(x) <b>x</b>
+
+title ECサイト - コアビジネスモデル
+
+' ユーザー関連
+table(users) {
+    primary_key(id): UUID
+    unique(username): VARCHAR(255)
+    unique(email): VARCHAR(255)
+    required(password): VARCHAR(255)
+    required(status): ENUM('ACTIVE', 'INACTIVE', 'SUSPENDED')
+    required(role): ENUM('USER', 'ADMIN')
+    required(created_at): TIMESTAMP
+    required(updated_at): TIMESTAMP
+}
+
+' 商品関連
+table(products) {
+    primary_key(id): UUID
+    required(name): VARCHAR(255)
+    required(description): TEXT
+    required(price): DECIMAL(10,2)
+    required(stock): INT
+    required(status): ENUM('AVAILABLE', 'OUT_OF_STOCK', 'DISCONTINUED')
+    foreign_key(category_id): UUID
+    required(created_at): TIMESTAMP
+    required(updated_at): TIMESTAMP
+}
+
+table(product_categories) {
+    primary_key(id): UUID
+    required(name): VARCHAR(100)
+    description: TEXT
+    parent_id: UUID
+    required(created_at): TIMESTAMP
+    required(updated_at): TIMESTAMP
+}
+
+' 注文関連
+table(orders) {
+    primary_key(id): UUID
+    foreign_key(user_id): UUID
+    required(total_amount): DECIMAL(10,2)
+    required(status): ENUM('PENDING', 'PAID', 'SHIPPED', 'DELIVERED', 'CANCELLED')
+    required(created_at): TIMESTAMP
+    required(updated_at): TIMESTAMP
+}
+
+table(order_items) {
+    primary_key(id): UUID
+    foreign_key(order_id): UUID
+    foreign_key(product_id): UUID
+    required(quantity): INT
+    required(price_at_time): DECIMAL(10,2)
+    required(created_at): TIMESTAMP
+    required(updated_at): TIMESTAMP
+}
+
+' カート関連
+table(cart) {
+    primary_key(id): UUID
+    foreign_key(user_id): UUID
+    required(status): ENUM('ACTIVE', 'CHECKED_OUT', 'ABANDONED')
+    required(created_at): TIMESTAMP
+    required(updated_at): TIMESTAMP
+}
+
+table(cart_items) {
+    primary_key(id): UUID
+    foreign_key(cart_id): UUID
+    foreign_key(product_id): UUID
+    required(quantity): INT
+    required(created_at): TIMESTAMP
+    required(updated_at): TIMESTAMP
+}
+
+' リレーションシップ
+users "1" -- "0..*" orders
+users "1" -- "0..1" cart
+products "1" -- "0..*" order_items
+products "1" -- "0..*" cart_items
+product_categories "1" -- "0..*" products
+orders "1" -- "1..*" order_items
+cart "1" -- "0..*" cart_items
+
+@enduml

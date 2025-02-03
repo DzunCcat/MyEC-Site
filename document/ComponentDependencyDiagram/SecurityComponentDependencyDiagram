@@ -1,0 +1,69 @@
+@startuml
+package "Security Components" {
+    component "Security Configuration" {
+        [Security Config] as SecurityConfig
+        [JWT Authentication Converter] as JwtConverter
+        note right of SecurityConfig
+            Spring Securityの設定
+            認証・認可ルールの定義
+        end note
+    }
+
+    component "Authentication" {
+        [Password Security] as PasswordSec
+        [User Security] as UserSec
+        note right of PasswordSec
+            BCryptによる
+            パスワードハッシュ化
+        end note
+    }
+
+    component "Authorization" {
+        interface "UserDetails Service" as UserDetailsService
+        [User Security Checker] as SecurityChecker
+    }
+}
+
+package "Core Components" {
+    component "Controllers" {
+        [User Controller] as UserCtrl
+    }
+
+    component "Services" {
+        interface "User Service" as UserService
+        [User Service Impl] as UserServiceImpl
+    }
+
+    component "Repositories" {
+        [User Repository] as UserRepo
+    }
+}
+
+database "Database" {
+    [User Table] as UserTable
+}
+
+' セキュリティ設定の依存関係
+SecurityConfig --> JwtConverter : "JWT変換設定"
+SecurityConfig --> UserDetailsService : "認証情報取得"
+SecurityConfig --> SecurityChecker : "認可チェック"
+
+' 認証コンポーネントの依存関係
+UserSec --> UserService : "ユーザー情報取得"
+PasswordSec --> UserServiceImpl : "パスワード処理"
+
+' 認可コンポーネントの依存関係
+SecurityChecker --> UserService : "ユーザー権限確認"
+UserDetailsService --> UserRepo : "ユーザー情報取得"
+
+' サービス層の依存関係
+UserCtrl --> UserService : "ビジネスロジック"
+UserService <|.. UserServiceImpl : "実装"
+UserServiceImpl --> UserRepo : "データアクセス"
+UserRepo --> UserTable : "永続化"
+
+' 横断的な依存関係
+UserServiceImpl --> PasswordSec : "パスワード処理"
+UserCtrl --> UserSec : "セキュリティチェック"
+
+@enduml

@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.userservice.dto.request.CreateUserRequest;
 import com.example.userservice.dto.response.UserResponse;
-import com.example.userservice.exception.validation.ValidationException;
+import com.example.userservice.error.exception.validation.ValidationException;
 import com.example.userservice.service.UserService;
 
 @RestController

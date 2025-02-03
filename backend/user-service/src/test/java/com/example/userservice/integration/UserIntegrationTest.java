@@ -62,7 +62,7 @@ public class UserIntegrationTest {
     void setUp() {
         userRepository.deleteAll();
 
-        // テスト用ユーザをDBに作成 
+        // テスト用ユーザをDBに作成
         existingUser = User.builder()
             .username("existingUser")
             .email("existing@test.com")
@@ -77,21 +77,21 @@ public class UserIntegrationTest {
             .password("newpassword123")
             .build();
 
-        //ユーザー用JWT (ROLE_USER)
+        // ユーザー用JWT (ROLE_USER)
         Jwt ownerJwt = Jwt.withTokenValue(OWNER_TOKEN_VALUE)
             .header("alg", "HS256")
             .claim("sub", "existingUser")
             .claim("scope", "ROLE_USER")
             .build();
 
-        //管理者用JWT ("ROLE_ADMIN")
+        // 管理者用JWT (ROLE_ADMIN)
         Jwt adminJwt = Jwt.withTokenValue(ADMIN_TOKEN_VALUE)
             .header("alg", "HS256")
             .claim("sub", "adminUser")
             .claim("authorities", List.of("ROLE_ADMIN"))
             .build();
 
-        //Forbidden用JWT ("notOwnerUser")
+        // Forbidden用JWT (notOwnerUser)
         Jwt notOwnerJwt = Jwt.withTokenValue(NOT_OWNER_TOKEN_VALUE)
             .header("alg", "HS256")
             .claim("sub", "notOwnerUser")
@@ -188,7 +188,10 @@ public class UserIntegrationTest {
             .content(objectMapper.writeValueAsString(duplicateUsernameRequest)))
             .andExpect(status().isConflict())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.message").value("Username existingUser is already registered"));
+            .andExpect(jsonPath("$.message").value("Username existingUser is already registered"))
+            .andExpect(jsonPath("$.details.errors").isArray())
+            .andExpect(jsonPath("$.details.errors", hasItem("Username existingUser is already registered")))
+            .andExpect(jsonPath("$.details.errors", hasItem("重複ユーザ: existingUser")));
 
         assertThat(userRepository.count()).isEqualTo(1);
     }
@@ -217,7 +220,9 @@ public class UserIntegrationTest {
             .andExpect(jsonPath("$.error").value("Conflict"))
             .andExpect(jsonPath("$.message").value("Email existingemail@test.com is already registered"))
             .andExpect(jsonPath("$.path").value("/api/users"))
-            .andExpect(jsonPath("$.details").doesNotExist());
+            .andExpect(jsonPath("$.details.errors").isArray())
+            .andExpect(jsonPath("$.details.errors", hasItem("Email existingemail@test.com is already registered")))
+            .andExpect(jsonPath("$.details.errors", hasItem("重複ユーザ: existingemail@test.com")));
 
         User foundUser = userRepository.findByUsername("newUniqueUser").orElse(null);
         assertThat(foundUser).isNull();
@@ -236,7 +241,9 @@ public class UserIntegrationTest {
             .andExpect(jsonPath("$.error").value("Not Found"))
             .andExpect(jsonPath("$.message").value("User not found with id: " + nonExistentUserId))
             .andExpect(jsonPath("$.path").value("/api/users/" + nonExistentUserId))
-            .andExpect(jsonPath("$.details").doesNotExist());
+            .andExpect(jsonPath("$.details.errors").isArray())
+            .andExpect(jsonPath("$.details.errors", hasItem("User not found with id: " + nonExistentUserId)))
+            .andExpect(jsonPath("$.details.errors", hasItem("ユーザID: " + nonExistentUserId.toString())));
     }
 
     @Test
@@ -253,7 +260,9 @@ public class UserIntegrationTest {
             .andExpect(jsonPath("$.error").value("Not Found"))
             .andExpect(jsonPath("$.message").value("User not found with id: " + nonExistentUserId))
             .andExpect(jsonPath("$.path").value("/api/users/" + nonExistentUserId))
-            .andExpect(jsonPath("$.details").doesNotExist());
+            .andExpect(jsonPath("$.details.errors").isArray())
+            .andExpect(jsonPath("$.details.errors", hasItem("User not found with id: " + nonExistentUserId)))
+            .andExpect(jsonPath("$.details.errors", hasItem("ユーザID: " + nonExistentUserId.toString())));
     }
 
     @Test
@@ -268,7 +277,9 @@ public class UserIntegrationTest {
             .andExpect(jsonPath("$.error").value("Not Found"))
             .andExpect(jsonPath("$.message").value("User not found with id: " + nonExistentUserId))
             .andExpect(jsonPath("$.path").value("/api/users/" + nonExistentUserId))
-            .andExpect(jsonPath("$.details").doesNotExist());
+            .andExpect(jsonPath("$.details.errors").isArray())
+            .andExpect(jsonPath("$.details.errors", hasItem("User not found with id: " + nonExistentUserId)))
+            .andExpect(jsonPath("$.details.errors", hasItem("ユーザID: " + nonExistentUserId.toString())));
     }
 
     @Test
@@ -282,7 +293,11 @@ public class UserIntegrationTest {
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("Invalid UUID format: " + invalidUuid));
+            .andExpect(jsonPath("$.message").value("Invalid UUID format: " + invalidUuid))
+            .andExpect(jsonPath("$.path").value("/api/users/" + invalidUuid))
+            .andExpect(jsonPath("$.details.errors").isArray())
+            .andExpect(jsonPath("$.details.errors", hasItem("Invalid UUID format: " + invalidUuid)))
+            .andExpect(jsonPath("$.details.errors", hasItem("不正なUUID: " + invalidUuid)));
     }
 
     @Test
@@ -294,17 +309,17 @@ public class UserIntegrationTest {
             .build();
 
         mockMvc.perform(post("/api/users")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(invalidEmailRequest)))
-            .andExpect(status().isBadRequest())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("入力値の検証に失敗しました"))
-            .andExpect(jsonPath("$.path").value("/api/users"))
-            .andExpect(jsonPath("$.details").isArray())
-            .andExpect(jsonPath("$.details", hasSize(1)))
-            .andExpect(jsonPath("$.details[0]").value("有効なEmailを入力してください。"));
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(invalidEmailRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("入力値の検証に失敗しました"))
+                .andExpect(jsonPath("$.path").value("/api/users"))
+                .andExpect(jsonPath("$.details.errors").isArray())
+                .andExpect(jsonPath("$.details.errors", hasItem("有効なEmailを入力してください。")));
     }
 
     @Test
@@ -324,9 +339,9 @@ public class UserIntegrationTest {
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.message").value("入力値の検証に失敗しました"))
             .andExpect(jsonPath("$.path").value("/api/users"))
-            .andExpect(jsonPath("$.details").isArray())
-            .andExpect(jsonPath("$.details", hasSize(1)))
-            .andExpect(jsonPath("$.details[0]").value("Passwordを8文字以上で入力してください。"));
+            .andExpect(jsonPath("$.details.errors").isArray())
+            .andExpect(jsonPath("$.details.errors", hasSize(1)))
+            .andExpect(jsonPath("$.details.errors", hasItem("Passwordを8文字以上で入力してください。")));
     }
 
     @Test
@@ -339,7 +354,8 @@ public class UserIntegrationTest {
             .andExpect(jsonPath("$.error").value("Forbidden"))
             .andExpect(jsonPath("$.message").value("Access Denied"))
             .andExpect(jsonPath("$.path").value("/api/users/" + existingUser.getId()))
-            .andExpect(jsonPath("$.details").doesNotExist());
+            .andExpect(jsonPath("$.details.errors").isArray())
+            .andExpect(jsonPath("$.details.errors", hasItem("アクセスが拒否されました")));
     }
 
 }

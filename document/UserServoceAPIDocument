@@ -1,0 +1,253 @@
+openapi: 3.0.3
+info:
+  title: User Service API
+  description: |
+    User Service APIは、ECサイトのユーザー管理機能を提供します。
+    このAPIを通じて、ユーザーの作成、取得、更新、削除などの操作が可能です。
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8081
+    description: 開発環境
+
+components:
+  schemas:
+    CreateUserRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+      properties:
+        username:
+          type: string
+          description: ユーザー名
+          example: "john_doe"
+          minLength: 1
+        email:
+          type: string
+          format: email
+          description: メールアドレス
+          example: "john@example.com"
+        password:
+          type: string
+          description: パスワード（8文字以上）
+          example: "password123"
+          minLength: 8
+          format: password
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: ユーザーID
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        username:
+          type: string
+          description: ユーザー名
+          example: "john_doe"
+        email:
+          type: string
+          format: email
+          description: メールアドレス
+          example: "john@example.com"
+        createdAt:
+          type: string
+          format: date-time
+          description: 作成日時
+        updatedAt:
+          type: string
+          format: date-time
+          description: 更新日時
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: エラー発生時刻
+        status:
+          type: integer
+          description: HTTPステータスコード
+          example: 400
+        error:
+          type: string
+          description: エラータイプ
+          example: "Bad Request"
+        message:
+          type: string
+          description: エラーメッセージ
+          example: "入力値の検証に失敗しました"
+        path:
+          type: string
+          description: リクエストパス
+          example: "/api/users"
+        details:
+          type: array
+          items:
+            type: string
+          description: 詳細なエラー情報
+          example: ["Usernameは必須です。"]
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWTトークンによる認証
+
+paths:
+  /api/users:
+    post:
+      summary: 新規ユーザーの作成
+      description: |
+        新しいユーザーを作成します。
+        ユーザー名とメールアドレスは一意である必要があります。
+      tags:
+        - users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: ユーザーが正常に作成されました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: 入力値が不正です
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: ユーザー名またはメールアドレスが既に使用されています
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/{id}:
+    get:
+      summary: ユーザー情報の取得
+      description: 指定されたIDのユーザー情報を取得します。
+      tags:
+        - users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ユーザーID（UUID形式）
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: ユーザー情報の取得に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: 指定されたIDのユーザーが見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: ユーザー情報の更新
+      description: |
+        指定されたIDのユーザー情報を更新します。
+        この操作には認証が必要で、管理者または本人のみが実行できます。
+      tags:
+        - users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ユーザーID（UUID形式）
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '200':
+          description: ユーザー情報の更新に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: 入力値が不正です
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 操作権限がありません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 指定されたIDのユーザーが見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: ユーザー名またはメールアドレスが既に使用されています
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: ユーザーの削除
+      description: |
+        指定されたIDのユーザーを削除します。
+        この操作には認証が必要で、管理者または本人のみが実行できます。
+      tags:
+        - users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ユーザーID（UUID形式）
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: ユーザーの削除に成功しました
+        '403':
+          description: 操作権限がありません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 指定されたIDのユーザーが見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

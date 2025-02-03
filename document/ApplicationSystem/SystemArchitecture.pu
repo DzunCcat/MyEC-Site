@@ -1,0 +1,90 @@
+@startuml
+!include <C4/C4_Container>
+
+title ECサイトのシステム全体アーキテクチャ
+
+skinparam componentStyle uml2
+skinparam packageStyle rectangle
+skinparam note {
+    BackgroundColor LightYellow
+    BorderColor Gray
+}
+
+' クライアント層
+package "Client" {
+    actor "User" as user
+    component "Frontend\n[Next.js :3000]" as Frontend
+}
+
+' バックエンド層
+package "Backend Services" {
+    ' APIゲートウェイ
+    component "API Gateway\n[Spring Cloud :8080]" as Gateway
+    
+    ' サービスディスカバリー
+    component "Eureka Server\n[:8761]" as EurekaServer
+
+    ' マイクロサービス群
+    package "Domain Services" {
+        component "User Service\n[Implemented :8081]" as UserSvc #90EE90
+        component "Product Service\n[Not Implemented :8082]" as ProductSvc #FFB6C1
+        component "Order Service\n[Not Implemented :8083]" as OrderSvc #FFB6C1
+        component "Cart Service\n[Not Implemented :8084]" as CartSvc #FFB6C1
+    }
+}
+
+' データ層
+package "Data Layer" {
+    database "PostgreSQL\n[:5432]" as DB
+    component "PgAdmin\n[:5050]" as PgAdmin
+}
+
+' 主要な通信フロー
+user --> Frontend
+Frontend --> Gateway
+
+' APIゲートウェイの連携
+Gateway --> UserSvc
+Gateway --> ProductSvc
+Gateway --> OrderSvc
+Gateway --> CartSvc
+
+' サービスディスカバリー
+EurekaServer <-- UserSvc
+EurekaServer <-- ProductSvc
+EurekaServer <-- OrderSvc
+EurekaServer <-- CartSvc
+
+' データアクセス
+DB <-- UserSvc
+DB <-- ProductSvc
+DB <-- OrderSvc
+DB <-- CartSvc
+
+DB -- PgAdmin
+
+note right of Gateway
+  全てのAPIリクエストを
+  適切なサービスに
+  ルーティング
+end note
+
+note right of EurekaServer
+  サービスの登録と発見を
+  管理
+end note
+
+note right of UserSvc
+  実装済み機能:
+  - ユーザー管理
+  - 認証・認可
+  - パスワード管理
+end note
+
+note right of DB
+  共有データベース
+  各サービスのデータを
+  管理
+end note
+
+@enduml

@@ -1,0 +1,71 @@
+@startuml
+title 決済処理フロー
+
+actor User
+participant "Frontend\n(Next.js)" as Frontend
+participant "API Gateway" as Gateway
+participant "Order\nService" as OrderService
+participant "Payment\nService" as PaymentService
+participant "External\nPayment API" as PaymentAPI
+database "Database" as DB
+
+== 決済処理開始 ==
+User -> Frontend: 支払い方法選択
+Frontend -> Gateway: POST /api/payments/init
+Gateway -> OrderService: 注文合計取得
+OrderService -> DB: 注文情報検索
+DB --> OrderService: 注文データ
+OrderService --> Gateway: 支払い金額
+
+Gateway -> PaymentService: 決済処理初期化
+PaymentService -> PaymentAPI: 決済セッション作成
+PaymentAPI --> PaymentService: 決済セッション情報
+PaymentService -> DB: 決済情報保存
+DB --> PaymentService: 保存完了
+PaymentService --> Gateway: 決済URL
+Gateway --> Frontend: 決済画面URL
+Frontend --> User: 決済画面表示
+
+== 決済実行 ==
+User -> PaymentAPI: カード情報入力
+PaymentAPI -> PaymentService: 決済結果コールバック
+
+alt 決済成功
+    PaymentService -> DB: 決済状態更新
+    PaymentService -> OrderService: 注文確定
+    OrderService -> DB: 注文状態更新
+    DB --> OrderService: 更新完了
+    OrderService --> PaymentService: 注文確定完了
+    PaymentService --> Frontend: 決済完了通知
+    Frontend --> User: 完了画面表示
+else 決済失敗
+    PaymentService -> DB: 失敗状態記録
+    PaymentService -> OrderService: 注文取消
+    OrderService -> DB: 注文状態更新
+    PaymentService --> Frontend: 決済失敗通知
+    Frontend --> User: エラー画面表示
+end
+
+== 返金処理 ==
+User -> Frontend: 返金要求
+Frontend -> Gateway: POST /api/payments/refund
+Gateway -> PaymentService: 返金処理開始
+PaymentService -> DB: 決済情報確認
+DB --> PaymentService: 決済データ
+
+alt 返金可能
+    PaymentService -> PaymentAPI: 返金要求
+    PaymentAPI --> PaymentService: 返金結果
+    PaymentService -> DB: 返金記録
+    PaymentService -> OrderService: 注文状態更新
+    OrderService -> DB: 返金状態反映
+    PaymentService --> Gateway: 返金完了
+    Gateway --> Frontend: 返金成功
+    Frontend --> User: 返金完了表示
+else 返金不可
+    PaymentService --> Gateway: 返金不可
+    Gateway --> Frontend: エラー
+    Frontend --> User: 返金不可表示
+end
+
+@enduml

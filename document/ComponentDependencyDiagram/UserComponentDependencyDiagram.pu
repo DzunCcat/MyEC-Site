@@ -1,0 +1,40 @@
+@startuml
+!include <C4/C4_Component>
+
+title コンポーネント依存関係図
+
+package "User Service" {
+    component "Controller Layer" {
+        [UserController]
+        [AuthController]
+    }
+    
+    component "Service Layer" {
+        [UserService]
+        [SecurityService]
+    }
+    
+    component "Repository Layer" {
+        [UserRepository]
+    }
+    
+    database "User Database" {
+        [User Table]
+    }
+}
+
+[UserController] --> [UserService]
+[AuthController] --> [SecurityService]
+[UserService] --> [UserRepository]
+[SecurityService] --> [UserRepository]
+[UserRepository] --> [User Table]
+
+note right of [UserController]
+  RESTful APIエンドポイントを提供
+end note
+
+note right of [SecurityService]
+  認証・認可の処理を担当
+end note
+
+@enduml

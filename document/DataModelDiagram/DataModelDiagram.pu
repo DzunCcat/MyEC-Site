@@ -1,0 +1,71 @@
+@startuml
+title データモデル図
+
+entity "Users" as users {
+    * id: UUID
+    --
+    * username: VARCHAR
+    * email: VARCHAR
+    * password: VARCHAR (hashed)
+    * created_at: TIMESTAMP
+    * updated_at: TIMESTAMP
+}
+
+entity "Products" as products {
+    * id: UUID
+    --
+    * name: VARCHAR
+    * description: TEXT
+    * price: DECIMAL
+    * stock: INTEGER
+    * created_at: TIMESTAMP
+    * updated_at: TIMESTAMP
+}
+
+entity "Orders" as orders {
+    * id: UUID
+    --
+    * user_id: UUID <<FK>>
+    * total_amount: DECIMAL
+    * status: VARCHAR
+    * created_at: TIMESTAMP
+    * updated_at: TIMESTAMP
+}
+
+entity "OrderItems" as order_items {
+    * id: UUID
+    --
+    * order_id: UUID <<FK>>
+    * product_id: UUID <<FK>>
+    * quantity: INTEGER
+    * price: DECIMAL
+    * created_at: TIMESTAMP
+    * updated_at: TIMESTAMP
+}
+
+entity "Cart" as cart {
+    * id: UUID
+    --
+    * user_id: UUID <<FK>>
+    * created_at: TIMESTAMP
+    * updated_at: TIMESTAMP
+}
+
+entity "CartItems" as cart_items {
+    * id: UUID
+    --
+    * cart_id: UUID <<FK>>
+    * product_id: UUID <<FK>>
+    * quantity: INTEGER
+    * created_at: TIMESTAMP
+    * updated_at: TIMESTAMP
+}
+
+users ||--o{ orders
+orders ||--o{ order_items
+products ||--o{ order_items
+users ||--o| cart
+cart ||--o{ cart_items
+products ||--o{ cart_items
+
+@enduml

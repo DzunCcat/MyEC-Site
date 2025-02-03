@@ -1,0 +1,66 @@
+@startuml
+package "API Gateway" {
+    component "Gateway Filters" {
+        [Authentication Filter] as AuthFilter
+        [Validation Filter] as ValidFilter
+        note right of AuthFilter
+            Bearerトークンの検証
+            認証ヘッダーの確認
+        end note
+    }
+
+    component "Controllers" {
+        [Fallback Controller] as FallbackCtrl
+        note right of FallbackCtrl
+            サービス障害時の
+            フォールバック処理
+        end note
+    }
+
+    component "Error Handling" {
+        [Global Error Handler] as ErrorHandler
+        [API Error Model] as ErrorModel
+    }
+
+    component "Configuration" {
+        [Gateway Routes] as Routes
+        [Security Config] as SecurityConfig
+    }
+}
+
+package "External Services" {
+    [User Service] as UserSvc
+    [Product Service] as ProductSvc
+    [Order Service] as OrderSvc
+    [Cart Service] as CartSvc
+}
+
+[Eureka Server] as Eureka
+
+' フィルター間の依存関係
+AuthFilter --> ValidFilter : "認証後の検証"
+ValidFilter --> FallbackCtrl : "バリデーション後の処理"
+
+' エラーハンドリングの依存関係
+AuthFilter ..> ErrorHandler : "エラー発生時"
+ValidFilter ..> ErrorHandler : "エラー発生時"
+FallbackCtrl ..> ErrorHandler : "フォールバック時"
+ErrorHandler --> ErrorModel : "エラーレスポンス生成"
+
+' ルーティング設定の依存関係
+Routes --> UserSvc : "ユーザー関連リクエスト"
+Routes --> ProductSvc : "商品関連リクエスト"
+Routes --> OrderSvc : "注文関連リクエスト"
+Routes --> CartSvc : "カート関連リクエスト"
+
+' サービスディスカバリーの依存関係
+Routes --> Eureka : "サービス検出"
+UserSvc --> Eureka : "サービス登録"
+ProductSvc --> Eureka : "サービス登録"
+OrderSvc --> Eureka : "サービス登録"
+CartSvc --> Eureka : "サービス登録"
+
+' 設定の依存関係
+SecurityConfig --> AuthFilter : "認証設定"
+
+@enduml

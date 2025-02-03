@@ -1,7 +1,4 @@
-package com.example.apigateway.handler;
-
-import java.util.ArrayList;
-import java.util.List;
+package com.example.apigateway.error.handler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 
-import com.example.apigateway.model.ApiError;
+import com.example.apigateway.error.response.ApiErrorResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import reactor.core.publisher.Mono;
@@ -27,23 +24,22 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
     @Override
     public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
         log.error("Global error handler caught exception", ex);
-
-        exchange.getResponse().setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
+        
+        HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+        exchange.getResponse().setStatusCode(status);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
-        
-        List<String> details = new ArrayList<>();
-        if (ex.getMessage() != null) {
-            details.add(ex.getMessage());
-        }
-        
 
-        ApiError apiError = new ApiError(
-            HttpStatus.INTERNAL_SERVER_ERROR.value(),
-            "Internal Server Error",
-            ex.getMessage(),
-            exchange.getRequest().getPath().toString(),
-            details
-        );
+        ApiErrorResponse apiError = ApiErrorResponse.builder()
+            .status(status.value())
+            .error(status.getReasonPhrase())
+            .message(ex.getMessage())
+            .path(exchange.getRequest().getPath().toString())
+            .build();
+
+        if (ex.getMessage() != null) {
+            apiError.addServiceInfo("system", "error-handler");
+            apiError.getDetails().put("errorDetail", ex.getMessage());
+        }
 
         try {
             byte[] bytes = objectMapper.writeValueAsBytes(apiError);

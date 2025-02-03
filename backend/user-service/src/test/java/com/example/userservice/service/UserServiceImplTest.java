@@ -15,12 +15,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 
 import com.example.userservice.dto.request.CreateUserRequest;
 import com.example.userservice.dto.response.UserResponse;
 import com.example.userservice.entity.User;
-import com.example.userservice.exception.business.UserAlreadyExistsException;
-import com.example.userservice.exception.business.UserNotFoundException;
+import com.example.userservice.error.exception.business.UserAlreadyExistsException;
+import com.example.userservice.error.exception.business.UserNotFoundException;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.security.PasswordSecurity;
 import com.example.userservice.service.impl.UserServiceImpl;
@@ -94,6 +95,7 @@ public class UserServiceImplTest {
         });
 
         assertEquals("Username testUser is already registered", exception.getMessage());
+        assertEquals(HttpStatus.CONFLICT, exception.getStatus());
 
         verify(userRepository, times(1)).existsByUsername("testUser");
         verify(userRepository, never()).existsByEmail(anyString());
@@ -116,6 +118,7 @@ public class UserServiceImplTest {
         });
 
         assertEquals("Email test@example.com is already registered", exception.getMessage());
+        assertEquals(HttpStatus.CONFLICT, exception.getStatus());
 
         verify(userRepository, times(1)).existsByUsername("newUser");
         verify(userRepository, times(1)).existsByEmail("test@example.com");
@@ -144,6 +147,7 @@ public class UserServiceImplTest {
         });
 
         assertEquals("User not found with id: " + testUuid, exception.getMessage());
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
 
         verify(userRepository, times(1)).findById(testUuid);
     }
@@ -172,6 +176,7 @@ public class UserServiceImplTest {
         });
 
         assertEquals("User not found with id: " + testUuid, exception.getMessage());
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
 
         verify(userRepository, times(1)).findById(testUuid);
         verify(userRepository, never()).save(any(User.class));
@@ -196,6 +201,7 @@ public class UserServiceImplTest {
         });
 
         assertEquals("User not found with id: " + testUuid, exception.getMessage());
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
 
         verify(userRepository, times(1)).existsById(testUuid);
         verify(userRepository, never()).deleteById(any(UUID.class));
@@ -232,6 +238,7 @@ public class UserServiceImplTest {
         });
 
         assertEquals("Email existing@example.com is already registered", exception.getMessage());
+        assertEquals(HttpStatus.CONFLICT, exception.getStatus());
 
         verify(userRepository, times(1)).findById(testUuid);
         verify(userRepository, times(1)).existsByEmail("existing@example.com");
@@ -246,9 +253,11 @@ public class UserServiceImplTest {
                 .password("123")
                 .build();
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             userService.createUser(shortPasswordRequest);
         });
+
+        assertEquals("Password must be at least 8 characters long", exception.getMessage());
 
         verify(userRepository, never()).save(any(User.class));
     }

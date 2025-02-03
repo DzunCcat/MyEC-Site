@@ -1,0 +1,66 @@
+@startuml
+title 商品購入フロー
+
+actor User
+participant "Frontend\n(Next.js)" as Frontend
+participant "API Gateway" as Gateway
+participant "Product\nService" as ProductService
+participant "Cart\nService" as CartService
+participant "Order\nService" as OrderService
+database "Database" as DB
+
+== カートへの商品追加 ==
+User -> Frontend: 商品をカートに追加
+Frontend -> Gateway: POST /api/carts/items
+Gateway -> ProductService: 在庫確認
+ProductService -> DB: 在庫数取得
+DB --> ProductService: 在庫数返却
+ProductService --> Gateway: 在庫確認結果
+
+alt 在庫あり
+    Gateway -> CartService: カートアイテム追加
+    CartService -> DB: カート情報更新
+    DB --> CartService: 更新完了
+    CartService --> Gateway: 追加成功
+    Gateway --> Frontend: 成功レスポンス
+    Frontend --> User: カート追加完了表示
+else 在庫なし
+    Gateway --> Frontend: 在庫切れエラー
+    Frontend --> User: 在庫切れ表示
+end
+
+== 注文処理 ==
+User -> Frontend: 注文確定
+Frontend -> Gateway: POST /api/orders
+
+Gateway -> CartService: カート内容取得
+CartService -> DB: カート情報読み込み
+DB --> CartService: カート情報
+CartService --> Gateway: カート内容
+
+Gateway -> ProductService: 最終在庫確認
+ProductService -> DB: 在庫数再確認
+DB --> ProductService: 在庫数
+ProductService --> Gateway: 確認結果
+
+alt 在庫十分
+    Gateway -> OrderService: 注文作成
+    OrderService -> DB: 注文情報保存
+    OrderService -> ProductService: 在庫数更新
+    ProductService -> DB: 在庫数減少
+    DB --> ProductService: 更新完了
+    ProductService --> OrderService: 在庫更新完了
+    DB --> OrderService: 保存完了
+    OrderService --> Gateway: 注文作成完了
+    Gateway -> CartService: カートクリア
+    CartService -> DB: カート情報削除
+    DB --> CartService: 削除完了
+    CartService --> Gateway: カートクリア完了
+    Gateway --> Frontend: 注文完了
+    Frontend --> User: 注文完了表示
+else 在庫不足
+    Gateway --> Frontend: 在庫不足エラー
+    Frontend --> User: 在庫不足表示
+end
+
+@enduml

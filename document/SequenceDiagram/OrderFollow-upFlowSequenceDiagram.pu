@@ -1,0 +1,55 @@
+@startuml
+title 注文フォローアップフロー
+
+actor User
+participant "Frontend\n(Next.js)" as Frontend
+participant "API Gateway" as Gateway
+participant "Order\nService" as OrderService
+participant "User\nService" as UserService
+database "Database" as DB
+
+== 注文履歴確認 ==
+User -> Frontend: 注文履歴要求
+Frontend -> Gateway: GET /api/orders
+Gateway -> UserService: ユーザー認証
+UserService --> Gateway: 認証OK
+Gateway -> OrderService: 注文履歴取得
+OrderService -> DB: 注文情報検索
+DB --> OrderService: 注文情報
+OrderService --> Gateway: 注文履歴
+Gateway --> Frontend: 注文履歴
+Frontend --> User: 注文履歴表示
+
+== 注文詳細確認 ==
+User -> Frontend: 注文詳細要求
+Frontend -> Gateway: GET /api/orders/{id}
+Gateway -> UserService: ユーザー認証
+UserService --> Gateway: 認証OK
+Gateway -> OrderService: 注文詳細取得
+OrderService -> DB: 詳細情報検索
+DB --> OrderService: 注文詳細
+OrderService --> Gateway: 注文詳細情報
+Gateway --> Frontend: 注文詳細
+Frontend --> User: 注文詳細表示
+
+== 注文キャンセル ==
+User -> Frontend: キャンセル要求
+Frontend -> Gateway: POST /api/orders/{id}/cancel
+Gateway -> UserService: ユーザー認証
+UserService --> Gateway: 認証OK
+Gateway -> OrderService: キャンセル処理
+
+alt キャンセル可能
+    OrderService -> DB: 注文状態更新
+    OrderService -> DB: 在庫数戻し
+    DB --> OrderService: 更新完了
+    OrderService --> Gateway: キャンセル完了
+    Gateway --> Frontend: キャンセル成功
+    Frontend --> User: キャンセル完了表示
+else キャンセル不可
+    OrderService --> Gateway: キャンセル不可
+    Gateway --> Frontend: エラー
+    Frontend --> User: キャンセル不可表示
+end
+
+@enduml

@@ -8,8 +8,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import com.example.userservice.dto.response.UserResponse;
-import com.example.userservice.exception.business.UserNotFoundException;
-import com.example.userservice.exception.validation.ValidationException;
+import com.example.userservice.error.exception.business.UserNotFoundException;
+import com.example.userservice.error.exception.validation.ValidationException;
 import com.example.userservice.service.UserService;
 
 /**

@@ -1,0 +1,64 @@
+@startuml
+title デプロイメント図
+
+node "Docker Environment" {
+    node "Frontend Container" {
+        [Next.js Application] as frontend
+    }
+    
+    node "API Gateway Container" {
+        [Spring Cloud Gateway] as gateway
+    }
+    
+    node "Service Discovery Container" {
+        [Eureka Server] as eureka
+    }
+    
+    node "User Service Container" {
+        [User Service] as user_service
+    }
+    
+    node "Database Container" {
+        database "PostgreSQL" {
+            [User Data]
+            [Product Data]
+            [Order Data]
+        }
+    }
+    
+    node "Management Container" {
+        [PgAdmin] as pgadmin
+    }
+}
+
+frontend <--> gateway : "HTTPS"
+gateway <--> user_service : "HTTP"
+user_service <--> eureka : "HTTP"
+user_service <--> [PostgreSQL] : "JDBC"
+[PostgreSQL] <--> pgadmin : "TCP"
+
+note right of frontend
+  Port: 3000
+  Volume: ./frontend
+end note
+
+note right of gateway
+  Port: 8080
+  Volume: ./api-gateway
+end note
+
+note right of eureka
+  Port: 8761
+end note
+
+note right of user_service
+  Port: 8081
+  Volume: ./user-service
+end note
+
+note right of [PostgreSQL]
+  Port: 5432
+  Volume: db-data
+end note
+
+@enduml

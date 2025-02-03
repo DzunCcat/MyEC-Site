@@ -1,0 +1,63 @@
+@startuml
+title 商品管理フロー
+
+actor Admin
+participant "Frontend\n(Next.js)" as Frontend
+participant "API Gateway" as Gateway
+participant "User\nService" as UserService
+participant "Product\nService" as ProductService
+database "Database" as DB
+
+== 管理者認証 ==
+Admin -> Frontend: 管理者ログイン
+Frontend -> Gateway: POST /api/auth/login
+Gateway -> UserService: 管理者権限確認
+UserService -> DB: ユーザー情報取得
+DB --> UserService: ユーザー情報
+UserService --> Gateway: 管理者確認完了
+Gateway --> Frontend: 認証完了
+Frontend --> Admin: ダッシュボード表示
+
+== 商品登録 ==
+Admin -> Frontend: 商品情報入力
+Frontend -> Gateway: POST /api/products
+Gateway -> UserService: 管理者権限確認
+UserService --> Gateway: 権限確認OK
+Gateway -> ProductService: 商品登録要求
+ProductService -> DB: 商品情報保存
+DB --> ProductService: 保存完了
+ProductService --> Gateway: 登録完了
+Gateway --> Frontend: 登録成功
+Frontend --> Admin: 登録完了表示
+
+== 在庫更新 ==
+Admin -> Frontend: 在庫数更新
+Frontend -> Gateway: PUT /api/products/{id}/stock
+Gateway -> UserService: 管理者権限確認
+UserService --> Gateway: 権限確認OK
+Gateway -> ProductService: 在庫更新要求
+ProductService -> DB: 現在の在庫確認
+DB --> ProductService: 現在の在庫
+ProductService -> DB: 在庫数更新
+DB --> ProductService: 更新完了
+ProductService --> Gateway: 更新完了
+Gateway --> Frontend: 更新成功
+Frontend --> Admin: 更新完了表示
+
+== 商品情報一括更新 ==
+Admin -> Frontend: CSVアップロード
+Frontend -> Gateway: POST /api/products/bulk
+Gateway -> UserService: 管理者権限確認
+UserService --> Gateway: 権限確認OK
+Gateway -> ProductService: 一括更新要求
+
+loop CSVの各行
+    ProductService -> DB: 商品情報更新
+    DB --> ProductService: 更新完了
+end
+
+ProductService --> Gateway: 一括更新完了
+Gateway --> Frontend: 更新成功
+Frontend --> Admin: 更新完了表示
+
+@enduml
