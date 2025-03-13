@@ -17,59 +17,56 @@ public class FallbackController {
     public ResponseEntity<ApiErrorResponse> userServiceFallback() {
         log.warn("Fallback triggered for user-service");
         return createFallbackResponse(
-            "User Service is temporarily unavailable",
-            "/api/users",
-            "user-service"
-        );
+                "User Service is temporarily unavailable",
+                "/api/users",
+                "user-service");
     }
 
     @GetMapping("/fallback/product-service")
     public ResponseEntity<ApiErrorResponse> productServiceFallback() {
         log.warn("Fallback triggered for product-service");
         return createFallbackResponse(
-            "Product Service is temporarily unavailable",
-            "/api/products",
-            "product-service"
-        );
+                "Product Service is temporarily unavailable",
+                "/api/products",
+                "product-service");
     }
 
     @GetMapping("/fallback/order-service")
     public ResponseEntity<ApiErrorResponse> orderServiceFallback() {
         log.warn("Fallback triggered for order-service");
         return createFallbackResponse(
-            "Order Service is temporarily unavailable",
-            "/api/orders",
-            "order-service"
-        );
+                "Order Service is temporarily unavailable",
+                "/api/orders",
+                "order-service");
     }
 
     @GetMapping("/fallback/cart-service")
     public ResponseEntity<ApiErrorResponse> cartServiceFallback() {
         log.warn("Fallback triggered for cart-service");
         return createFallbackResponse(
-            "Cart Service is temporarily unavailable",
-            "/api/carts",
-            "cart-service"
-        );
+                "Cart Service is temporarily unavailable",
+                "/api/carts",
+                "cart-service");
     }
 
     private ResponseEntity<ApiErrorResponse> createFallbackResponse(
-            String message, 
-            String path, 
+            String message,
+            String path,
             String serviceName) {
-        
+
         ApiErrorResponse apiError = ApiErrorResponse.builder()
-            .status(HttpStatus.SERVICE_UNAVAILABLE.value())
-            .error("Service Unavailable")
-            .message(message)
-            .path(path)
-            .build();
+                .status(HttpStatus.SERVICE_UNAVAILABLE.value())
+                .error("Service Unavailable")
+                .message(message)
+                .path(path)
+                .build();
+
+        apiError.addErrorMessage(message);
+        apiError.addErrorMessage("Service is not responding. Please try again later.");
 
         apiError.addServiceInfo(serviceName, "fallback");
-        apiError.getDetails().put("recoveryMessage", 
-            "Service is not responding. Please try again later.");
 
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-            .body(apiError);
+                .body(apiError);
     }
 }

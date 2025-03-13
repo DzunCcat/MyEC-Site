@@ -132,10 +132,10 @@ public class UserServiceImpl implements UserService {
     }
 
     private void validateNewUser(CreateUserRequest request) {
-        if (request.getPassword() == null || request.getPassword().length() < 8) {
-            log.warn("Attempted to create user with password shorter than 8 characters");
-            throw new IllegalArgumentException("Password must be at least 8 characters long");
-        }
+    	if (request.getPassword() == null || request.getPassword().length() < 8) {
+    	    log.warn("Attempted to create user with password shorter than 8 characters");
+    	    throw new ValidationException("Password must be at least 8 characters long");
+    	}
         
         if (userRepository.existsByUsername(request.getUsername())) {
             log.warn("Attempted to create user with existing username: {}", request.getUsername());

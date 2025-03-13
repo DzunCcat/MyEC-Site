@@ -108,7 +108,7 @@ public class SecurityConfig {
 	//カスタムJSON設定
 	//http 401 error
     @Bean
-    public AuthenticationEntryPoint customAuthenticationEntryPoint() {
+    AuthenticationEntryPoint customAuthenticationEntryPoint() {
         return (request, response, authException) -> {
             log.warn("Unauthorized access attempt: {}", request.getRequestURI());
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
@@ -132,7 +132,7 @@ public class SecurityConfig {
 
 	//http 403 error
     @Bean
-    public AccessDeniedHandler customAccessDeniedHandler() {
+    AccessDeniedHandler customAccessDeniedHandler() {
         return (request, response, accessDeniedException) -> {
             log.warn("Access denied to resource: {}", request.getRequestURI());
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);

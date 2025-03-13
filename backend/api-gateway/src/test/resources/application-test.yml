@@ -1,0 +1,92 @@
+spring:
+    application:
+        name: api-gateway-test
+    cloud:
+        gateway:
+            discovery:
+                locator:
+                    enabled: false
+            routes:
+               - id: user-service
+                 uri: http://localhost:9091
+                 predicates:
+                    - Path=/api/users/**
+                 filters:
+                    - name: CircuitBreaker
+                      args:
+                        name: userServiceBreaker
+                        fallbackUri: forward:/fallback/user-service
+               - id: product-service
+                 uri: http://localhost:9092
+                 predicates:
+                    - Path=/api/products/**
+                 filters:
+                    - name: CircuitBreaker
+                      args:
+                        name: productServiceBreaker
+                        fallbackUri: forward:/fallback/product-service
+               - id: order-service
+                 uri: http://localhost:9093
+                 predicates:
+                    - Path=/api/orders/**
+                 filters:
+                    - name: CircuitBreaker
+                      args:
+                        name: orderServiceBreaker
+                        fallbackUri: forward:/fallback/order-service
+               - id: cart-service
+                 uri: http://localhost:9094
+                 predicates:
+                    - Path=/api/carts/**
+                 filters:
+                    - name: CircuitBreaker
+                      args:
+                        name: cartServiceBreaker
+                        fallbackUri: forward:/fallback/cart-service
+            default-filters:
+                - name: RequestSize
+                  args:
+                    maxSize: 10MB
+                - name: Authentication
+                - name: Validation
+            httpclient:
+                connect-timeout: 2000
+                response-timeout: 5s
+
+eureka:
+    client:
+        enabled: false
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include: "*" 
+    endpoint:
+        health:
+            show-details: always
+        gateway:
+            enabled: true
+
+server:
+    port: 8080
+
+resilience4j:
+    circuitbreaker:
+        configs:
+            default:
+                registerHealthIndicator: true
+                slidingWindowSize: 10
+                minimumNumberOfCalls: 5
+                failureRateThreshold: 50
+                permittedNumberOfCallsInHalfOpenState: 3
+                waitDurationInOpenState: 10s
+        instances:
+            userServiceBreaker:
+                baseConfig: default
+            productServiceBreaker:
+                baseConfig: default
+            orderServiceBreaker:
+                baseConfig: default
+            cartServiceBreaker:
+                baseConfig: default

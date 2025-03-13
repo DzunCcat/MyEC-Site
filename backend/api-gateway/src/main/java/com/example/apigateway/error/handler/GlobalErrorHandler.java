@@ -8,8 +8,11 @@ import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 
+import com.example.apigateway.error.exception.base.BaseException;
+import com.example.apigateway.error.exception.ServiceUnavailableException;
 import com.example.apigateway.error.response.ApiErrorResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -24,21 +27,41 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
     @Override
     public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
         log.error("Global error handler caught exception", ex);
-        
+
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+        String errorMessage = "Internal Server Error";
+
+        if (ex instanceof BaseException) {
+            BaseException baseEx = (BaseException) ex;
+            status = baseEx.getStatus();
+            errorMessage = status.getReasonPhrase();
+        } else if (ex instanceof ResponseStatusException) {
+            ResponseStatusException responseEx = (ResponseStatusException) ex;
+            status = HttpStatus.valueOf(responseEx.getStatusCode().value());
+            errorMessage = status.getReasonPhrase();
+        }
+
         exchange.getResponse().setStatusCode(status);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
         ApiErrorResponse apiError = ApiErrorResponse.builder()
-            .status(status.value())
-            .error(status.getReasonPhrase())
-            .message(ex.getMessage())
-            .path(exchange.getRequest().getPath().toString())
-            .build();
+                .status(status.value())
+                .error(errorMessage)
+                .message(ex.getMessage())
+                .path(exchange.getRequest().getPath().toString())
+                .build();
 
-        if (ex.getMessage() != null) {
+        apiError.addErrorMessage(ex.getMessage());
+
+        if (ex instanceof ServiceUnavailableException) {
+            ServiceUnavailableException serviceEx = (ServiceUnavailableException) ex;
+            apiError.addServiceInfo(serviceEx.getServiceName(), "error");
+        } else {
             apiError.addServiceInfo("system", "error-handler");
-            apiError.getDetails().put("errorDetail", ex.getMessage());
+        }
+
+        if (ex.getCause() != null) {
+            apiError.addErrorMessage("Caused by: " + ex.getCause().getMessage());
         }
 
         try {

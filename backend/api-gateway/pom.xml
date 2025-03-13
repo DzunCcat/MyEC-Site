@@ -84,6 +84,13 @@
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
         </dependency>
+        
+		<!-- scope-test -->
+		<dependency>
+		    <groupId>io.projectreactor</groupId>
+		    <artifactId>reactor-test</artifactId>
+		    <scope>test</scope>
+		</dependency>
     </dependencies>
     
     <build>

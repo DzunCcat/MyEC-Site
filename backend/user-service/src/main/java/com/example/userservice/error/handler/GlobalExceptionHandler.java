@@ -53,8 +53,12 @@ public class GlobalExceptionHandler {
             String userId = ex.getMessage().substring(ex.getMessage().lastIndexOf(" ") + 1);
             errors.add("ユーザID: " + userId);
         } else if (ex instanceof UserAlreadyExistsException) {
-            String identifier = ex.getMessage().split(" ")[1];
-            errors.add("重複ユーザ: " + identifier);
+
+            String[] parts = ex.getMessage().split(" ");
+            if (parts.length > 1) {
+                String identifier = parts[1];
+                errors.add("重複ユーザ: " + identifier);
+            }
         }
 
         detailsMap.put("errors", errors);
@@ -127,8 +131,39 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errorResponse);
     }
 
-     //予期しない例外 (RuntimeException, それ以外のException)
-     
+     //4. AuthorizationDeniedException (メソッドセキュリティで権限が足りない場合) → 403
+    @ExceptionHandler(org.springframework.security.authorization.AuthorizationDeniedException.class)
+    public ResponseEntity<UserServiceErrorResponse> handleAuthorizationDeniedException(
+            org.springframework.security.authorization.AuthorizationDeniedException ex,
+            WebRequest request
+    ) {
+        log.warn("Handling AuthorizationDeniedException: {} (returning 403)", ex.getMessage());
+
+        UserServiceErrorResponse errorResponse = UserServiceErrorResponse.builder()
+            .status(HttpStatus.FORBIDDEN.value())
+            .error(HttpStatus.FORBIDDEN.getReasonPhrase())
+            .message("Access Denied")
+            .path(((ServletWebRequest) request).getRequest().getRequestURI())
+            .build();
+
+        Map<String, Object> detailsMap = new HashMap<>();
+        List<String> errors = new ArrayList<>();
+
+        errors.add(ex.getMessage());  
+        errors.add("requiredRole: OWNER or ADMIN");
+        errors.add("アクセスが拒否されました");
+
+
+
+        detailsMap.put("errors", errors);
+        errorResponse.setDetails(detailsMap);
+
+        return ResponseEntity
+            .status(HttpStatus.FORBIDDEN)
+            .body(errorResponse);
+    }
+
+     //5. その他、予期しない例外 (RuntimeException, それ以外のException)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<UserServiceErrorResponse> handleUnexpectedException(
             Exception ex,

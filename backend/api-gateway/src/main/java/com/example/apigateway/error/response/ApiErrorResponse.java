@@ -1,7 +1,9 @@
 package com.example.apigateway.error.response;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.example.apigateway.error.contract.ErrorResponse;
@@ -12,25 +14,44 @@ import lombok.Data;
 @Data
 @Builder
 public class ApiErrorResponse implements ErrorResponse {
-    private final LocalDateTime timestamp;
+    @Builder.Default
+    private final LocalDateTime timestamp = LocalDateTime.now();
     private final int status;
     private final String error;
     private final String message;
     private final String path;
-    private Map<String, Object> details;
 
-    public static class ApiErrorResponseBuilder {
-        private Map<String, Object> details = new HashMap<>();
-        private LocalDateTime timestamp = LocalDateTime.now();
-    }
+    @Builder.Default
+    private Map<String, Object> details = new HashMap<>();
 
-
-    // サービス固有のメソッド
     public void addServiceInfo(String serviceName, String serviceId) {
         if (this.details == null) {
             this.details = new HashMap<>();
         }
-        this.details.put("serviceName", serviceName);
-        this.details.put("serviceId", serviceId);
+
+        // errorsリストが存在しない場合は作成
+        if (!this.details.containsKey("errors")) {
+            this.details.put("errors", new ArrayList<String>());
+        }
+
+        @SuppressWarnings("unchecked")
+        List<String> errors = (List<String>) this.details.get("errors");
+        errors.add("serviceName: " + serviceName);
+        errors.add("serviceId: " + serviceId);
+    }
+
+    // エラーメッセージ追加用のメソッド
+    public void addErrorMessage(String errorMessage) {
+        if (this.details == null) {
+            this.details = new HashMap<>();
+        }
+
+        if (!this.details.containsKey("errors")) {
+            this.details.put("errors", new ArrayList<String>());
+        }
+
+        @SuppressWarnings("unchecked")
+        List<String> errors = (List<String>) this.details.get("errors");
+        errors.add(errorMessage);
     }
 }

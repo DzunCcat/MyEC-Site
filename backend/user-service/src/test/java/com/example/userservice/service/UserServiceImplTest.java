@@ -22,6 +22,7 @@ import com.example.userservice.dto.response.UserResponse;
 import com.example.userservice.entity.User;
 import com.example.userservice.error.exception.business.UserAlreadyExistsException;
 import com.example.userservice.error.exception.business.UserNotFoundException;
+import com.example.userservice.error.exception.validation.ValidationException;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.security.PasswordSecurity;
 import com.example.userservice.service.impl.UserServiceImpl;
@@ -253,10 +254,10 @@ public class UserServiceImplTest {
                 .password("123")
                 .build();
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+        ValidationException exception = assertThrows(ValidationException.class, () -> {
             userService.createUser(shortPasswordRequest);
         });
-
+        
         assertEquals("Password must be at least 8 characters long", exception.getMessage());
 
         verify(userRepository, never()).save(any(User.class));
